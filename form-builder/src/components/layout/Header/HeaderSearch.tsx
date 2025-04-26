@@ -3,6 +3,7 @@ import { Autocomplete, Burger, Group } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 // import { MantineLogo } from "@mantinex/mantine-logo";
 import classes from "./HeaderSearch.module.css";
+import { Link } from "react-router-dom";
 
 const links = [
   { link: "/about", label: "Features" },
@@ -31,7 +32,9 @@ export function HeaderSearch() {
         <Group>
           <Burger opened={opened} onClick={toggle} size="sm" hiddenFrom="sm" />
           {/* <MantineLogo size={28} /> */}
-          <h1>MSForm</h1>
+          <Link to="/" className={classes.logoText}>
+            MSForm
+          </Link>
         </Group>
 
         <Group>
