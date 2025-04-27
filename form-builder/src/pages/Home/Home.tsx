@@ -61,7 +61,7 @@ export default function Home() {
 
         {forms.map((form) => (
           <Card key={form.id} withBorder shadow="xs">
-            <Group position="apart">
+            <Group justify="space-between">
               <Text fw={500}>{form.title || "Biểu mẫu không tiêu đề"}</Text>
               <Group>
                 <Button
