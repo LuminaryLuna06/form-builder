@@ -33,7 +33,7 @@ export function HeaderSearch() {
           <Burger opened={opened} onClick={toggle} size="sm" hiddenFrom="sm" />
           {/* <MantineLogo size={28} /> */}
           <Link to="/" className={classes.logoText}>
-            MSForm
+            MSFormFake
           </Link>
         </Group>
 
