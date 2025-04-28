@@ -7,7 +7,7 @@ export default function FormSubmitted() {
       <Title order={2} mb="md">
         Thank You!
       </Title>
-      <Text mb="xl">Your form has been submitted successfully.</Text>
+      <Text mb="xl">Câu trả lời của bạn đã được lưu lại.</Text>
     </Container>
   );
 }
