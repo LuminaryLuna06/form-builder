@@ -20,11 +20,12 @@ import { collection, query, orderBy } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { useParams } from "react-router-dom";
 import { IconDownload } from "@tabler/icons-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { BarChart, PieChart } from "@mantine/charts";
 
 export default function FormResponses() {
   const { id: formId } = useParams();
+  const [showAllResponses, setShowAllResponses] = useState(false);
   const [snapshot, loading, error] = useCollection(
     query(
       collection(db, "responses", formId || "", "submissions"),
@@ -61,7 +62,6 @@ export default function FormResponses() {
           stats[qKey].options.add(answer);
       });
     });
-
     // Calculate statistics for each question
     Object.keys(stats).forEach((qKey) => {
       const question = stats[qKey];
@@ -88,6 +88,7 @@ export default function FormResponses() {
         );
       }
     });
+    // const toggleAllResponses = () => setShowAllResponses(!showAllResponses);
 
     return {
       questionStats: stats,
@@ -167,9 +168,20 @@ export default function FormResponses() {
     <Container size="lg" py="xl">
       <Group justify="space-between" mb="xl">
         <Title order={2}>Form Responses Analysis</Title>
-        <Button leftSection={<IconDownload size={16} />} onClick={exportToCSV}>
-          Export to CSV
-        </Button>
+        <Group>
+          <Button
+            variant={showAllResponses ? "filled" : "outline"}
+            onClick={() => setShowAllResponses(!showAllResponses)}
+          >
+            {showAllResponses ? "Hide Full Responses" : "Show All Responses"}
+          </Button>
+          <Button
+            leftSection={<IconDownload size={16} />}
+            onClick={exportToCSV}
+          >
+            Export to CSV
+          </Button>
+        </Group>
       </Group>
 
       <Paper withBorder p="md" mb="xl">
@@ -177,6 +189,78 @@ export default function FormResponses() {
           Total Responses: <Badge size="lg">{responseCount}</Badge>
         </Text>
       </Paper>
+
+      {/* Full Responses Table - Only shown when toggled */}
+      {showAllResponses && (
+        <Paper withBorder p="md" mt="xl" mb="xl">
+          <Title order={4} mb="md">
+            All Responses ({responseCount})
+          </Title>
+          <Table.ScrollContainer minWidth={800}>
+            <Table striped highlightOnHover>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Submission Time</Table.Th>
+                  {Object.keys(questionStats)
+                    .sort(
+                      (a, b) =>
+                        parseInt(a.substring(1)) - parseInt(b.substring(1))
+                    )
+                    .map((qKey) => (
+                      <Table.Th key={qKey}>
+                        {questionStats[qKey].title}
+                      </Table.Th>
+                    ))}
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {snapshot?.docs.map((doc) => {
+                  const response = doc.data();
+                  return (
+                    <Table.Tr key={doc.id}>
+                      <Table.Td>
+                        {response.createdAt?.toDate().toLocaleString()}
+                      </Table.Td>
+                      {Object.keys(questionStats)
+                        .sort(
+                          (a, b) =>
+                            parseInt(a.substring(1)) - parseInt(b.substring(1))
+                        )
+                        .map((qKey) => {
+                          const answer = response.responses[qKey]?.answer;
+                          const type = response.responses[qKey]?.type;
+
+                          // Format based on question type
+                          let displayValue = "";
+                          if (answer === null || answer === undefined) {
+                            displayValue = "-";
+                          } else if (type === "date") {
+                            displayValue = new Date(
+                              answer
+                            ).toLocaleDateString();
+                          } else if (typeof answer === "string") {
+                            displayValue =
+                              answer.length > 50
+                                ? `${answer.substring(0, 50)}...`
+                                : answer;
+                          } else {
+                            displayValue = JSON.stringify(answer);
+                          }
+
+                          return (
+                            <Table.Td key={qKey}>
+                              <Text lineClamp={1}>{displayValue}</Text>
+                            </Table.Td>
+                          );
+                        })}
+                    </Table.Tr>
+                  );
+                })}
+              </Table.Tbody>
+            </Table>
+          </Table.ScrollContainer>
+        </Paper>
+      )}
 
       <Stack gap="xl">
         {Object.entries(questionStats).map(([qKey, stats]) => (
@@ -209,7 +293,7 @@ export default function FormResponses() {
                 </SimpleGrid>
 
                 <BarChart
-                pb={10}
+                  pb={10}
                   h={300}
                   data={Array.from(
                     { length: stats.max - stats.min + 1 },
@@ -229,7 +313,6 @@ export default function FormResponses() {
                     tickCount: stats.max - stats.min + 1,
                     domain: [stats.min - 0.5, stats.max + 0.5],
                   }}
-
                   barProps={{
                     radius: 4,
                     stroke: "#fff",
