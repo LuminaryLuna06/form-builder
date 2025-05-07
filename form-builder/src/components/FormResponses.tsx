@@ -10,21 +10,22 @@ import {
   Group,
   Divider,
   Badge,
-  Space,
   Button,
   LoadingOverlay,
   SimpleGrid,
+  Center,
 } from "@mantine/core";
 import { useCollection } from "react-firebase-hooks/firestore";
 import { collection, query, orderBy } from "firebase/firestore";
 import { db } from "../firebaseConfig";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { IconDownload } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
 import { BarChart, PieChart } from "@mantine/charts";
 
 export default function FormResponses() {
   const { id: formId } = useParams();
+  const navigate = useNavigate();
   const [showAllResponses, setShowAllResponses] = useState(false);
   const [snapshot, loading, error] = useCollection(
     query(
@@ -90,6 +91,8 @@ export default function FormResponses() {
     });
     // const toggleAllResponses = () => setShowAllResponses(!showAllResponses);
 
+    //         }}
+
     return {
       questionStats: stats,
       responseCount: responses.length,
@@ -105,7 +108,17 @@ export default function FormResponses() {
     );
   if (error)
     return <Text c="red">Error loading responses: {error.message}</Text>;
-  if (!responseCount) return <Text>No responses yet</Text>;
+  if (!responseCount)
+    return (
+      <Container>
+        <Text ta={Center} size="xl" fw={500}>
+          No responses yet
+        </Text>
+        {/* <Button variant="outline" color="blue" onClick={handleGoBack}>
+          👀 Xem trước
+        </Button> */}
+      </Container>
+    );
 
   const exportToCSV = () => {
     if (!snapshot || snapshot.empty) {
@@ -163,7 +176,9 @@ export default function FormResponses() {
     link.click();
     document.body.removeChild(link);
   };
-
+  const handleGoBack = () => {
+    navigate(-1);
+  };
   return (
     <Container size="lg" py="xl">
       <Group justify="space-between" mb="xl">

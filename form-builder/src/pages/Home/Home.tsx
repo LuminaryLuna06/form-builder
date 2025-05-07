@@ -11,39 +11,46 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import { FormData } from "../../types/form";
+import {
+  collection,
+  getDocs,
+  deleteDoc,
+  doc,
+} from "firebase/firestore";
+import { db } from "../../firebaseConfig";
 
 export default function Home() {
   const [forms, setForms] = useState<FormData[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const allForms: FormData[] = [];
-
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key?.startsWith("form_")) {
-        const item = localStorage.getItem(key);
-        if (item) {
-          try {
-            const parsed = JSON.parse(item);
-            allForms.push(parsed);
-          } catch (err) {
-            console.error("Lỗi khi đọc form:", err);
-          }
-        }
+    const fetchForms = async () => {
+      try {
+        const snapshot = await getDocs(collection(db, "forms"));
+        const formList = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as FormData[];
+        setForms(formList);
+      } catch (err) {
+        console.error("Lỗi khi tải forms:", err);
       }
-    }
+    };
 
-    setForms(allForms);
+    fetchForms();
   }, []);
 
   const createForm = () => {
     const newId = uuidv4();
     navigate(`/create-form/${newId}`);
   };
-  const deleteForm = (id: string) => {
-    localStorage.removeItem("form_" + id);
-    setForms((prev) => prev.filter((form) => form.id !== id));
+  const deleteForm = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, "forms", id));
+      setForms((prev) => prev.filter((form) => form.id !== id));
+    } catch (err) {
+      console.error("Lỗi khi xóa form:", err);
+    }
   };
 
   return (

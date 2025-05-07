@@ -15,67 +15,90 @@ import {
   rem,
 } from "@mantine/core";
 import { useState, useEffect } from "react";
-import { Question, FormData, QuestionType } from "../types/form";
+import { Question, FormData, QuestionType, Page } from "../types/form";
 import QuestionItem from "./QuestionItem";
-import { saveFormToLocalStorage } from "../utils/localStorage";
 import { v4 as uuidv4 } from "uuid";
 import { useNavigate, useParams } from "react-router-dom";
 import { IconCopy, IconCheck } from "@tabler/icons-react";
+import { saveFormToFirestore } from "../utils/firebaseStorage";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../firebaseConfig";
 
 export default function FormBuilder() {
   const { id } = useParams();
   const [title, setTitle] = useState("");
-  const [questions, setQuestions] = useState<Question[]>([]);
+  const [pages, setPages] = useState<Page[]>([]);
   const [opened, setOpened] = useState(false);
   const navigate = useNavigate();
 
   const submissionLink = `${window.location.origin}/#/form-submit/${id || ""}`;
-  useEffect(() => {
-    if (!id) return;
 
-    const saved = localStorage.getItem("form_" + id);
-    if (saved) {
-      const parsed: FormData = JSON.parse(saved);
-      setTitle(parsed.title);
-      setQuestions(parsed.questions || []);
-    }
+  useEffect(() => {
+    const fetchForm = async () => {
+      if (!id) return;
+
+      try {
+        const docRef = doc(db, "forms", id);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const formData = docSnap.data() as FormData;
+          setTitle(formData.title);
+          setPages(formData.pages || []);
+        } else {
+          console.warn("Form không tồn tại!");
+        }
+      } catch (error) {
+        console.error("Lỗi khi tải form từ Firestore:", error);
+      }
+    };
+
+    fetchForm();
   }, [id]);
 
-  // const addQuestion = () => {
-  //   setQuestions((prev) => [
-  //     ...prev,
-  //     { id: uuidv4(), type: "short_text", title: "" },
-  //   ]);
-  // };
+  const addQuestion = (type: QuestionType, pageIndex: number) => {
+    const newQuestion: Question = {
+      id: uuidv4(),
+      name: `question_${uuidv4()}`,
+      type,
+      title: "",
+      options: [],
+      ratingCharacter: type === "rating" ? "★" : "",
+      ratingScale: type === "rating" ? 11 : 0,
+      isRequired: false,
+    };
 
-  const addQuestion = (type: QuestionType) => {
-    setQuestions((prev) => [
-      ...prev,
-      {
-        id: uuidv4(),
-        type,
-        title: "",
-        options: type === "short_text" ? undefined : [""],
-      },
-    ]);
+    const updatedPages = [...pages];
+    updatedPages[pageIndex].elements.push(newQuestion);
+    setPages(updatedPages);
   };
 
-  const saveForm = () => {
-    const formData = {
-      title,
-      questions,
+  const saveForm = async () => {
+    const formData: FormData = {
       id: id || uuidv4(),
+      title,
+      pages,
     };
-    saveFormToLocalStorage(formData);
+    console.log("Saving form data:", formData);
+    await saveFormToFirestore(formData);
   };
 
   const handlePreview = () => {
     saveForm();
     navigate(`/preview/${id}`);
   };
+
   const handleAnalyze = () => {
     saveForm();
     navigate(`/form-responses/${id}`);
+  };
+
+  const addPage = () => {
+    const newPage: Page = {
+      name: `page_${uuidv4()}`,
+      elements: [],
+    };
+    setPages([...pages, newPage]);
   };
 
   return (
@@ -115,7 +138,7 @@ export default function FormBuilder() {
               📊 Xem phản hồi
             </Button>
           </Group>
-        </Group>{" "}
+        </Group>
       </Paper>
 
       {/* BODY */}
@@ -131,51 +154,100 @@ export default function FormBuilder() {
             value={title}
             onChange={(e) => setTitle(e.currentTarget.value)}
           />
-          {questions.map((q, index) => (
-            <QuestionItem
-              key={q.id}
-              question={q}
-              index={index}
-              onChange={(updated) => {
-                const updatedQuestions = [...questions];
-                updatedQuestions[index] = updated;
-                setQuestions(updatedQuestions);
-              }}
-              onDelete={() => {
-                const updatedQuestions = questions.filter(
-                  (_, i) => i !== index
-                );
-                setQuestions(updatedQuestions);
-              }}
-            />
-          ))}
-          {/* NÚT THÊM CÂU HỎI */}
-          <Menu shadow="md" width={690}>
-            <Menu.Target>
-              <Button>+ Thêm câu hỏi</Button>
-            </Menu.Target>
 
-            <Menu.Dropdown>
-              <Menu.Item onClick={() => addQuestion("short_text")}>
-                ✍️ Trả lời ngắn
-              </Menu.Item>
-              <Menu.Item onClick={() => addQuestion("multiple_choice")}>
-                📝 Trắc nghiệm
-              </Menu.Item>
-              <Menu.Item onClick={() => addQuestion("checkbox")}>
-                ✅ Checkbox nhiều lựa chọn
-              </Menu.Item>
-              <Menu.Item onClick={() => addQuestion("rating")}>
-                🌟 Đánh giá
-              </Menu.Item>
-              <Menu.Item onClick={() => addQuestion("date")}>
-                📅 Ngày tháng
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>{" "}
+          {pages.map((page, pageIndex) => (
+            <Paper
+              key={page.name}
+              shadow="xs"
+              p="md"
+              radius="md"
+              withBorder
+              style={{ backgroundColor: "#1a1b1e" }}
+            >
+              <Stack>
+                <Stack gap="xs">
+                  <TextInput
+                    label={`Tiêu đề trang ${pageIndex + 1}`}
+                    placeholder="Ví dụ: Thông tin chung"
+                    value={page.title || ""}
+                    onChange={(e) => {
+                      const updatedPages = [...pages];
+                      updatedPages[pageIndex].title = e.currentTarget.value;
+                      setPages(updatedPages);
+                    }}
+                  />
+
+                  <TextInput
+                    label="Mô tả trang"
+                    placeholder="Thêm mô tả ngắn cho trang này..."
+                    value={page.description || ""}
+                    onChange={(e) => {
+                      const updatedPages = [...pages];
+                      updatedPages[pageIndex].description =
+                        e.currentTarget.value;
+                      setPages(updatedPages);
+                    }}
+                  />
+                </Stack>
+
+                {page.elements.map((q, qIndex) => (
+                  <QuestionItem
+                    key={q.id}
+                    question={q}
+                    index={qIndex}
+                    onChange={(updated) => {
+                      const updatedPages = [...pages];
+                      updatedPages[pageIndex].elements[qIndex] = updated;
+                      setPages(updatedPages);
+                    }}
+                    onDelete={() => {
+                      const updatedPages = [...pages];
+                      updatedPages[pageIndex].elements = updatedPages[
+                        pageIndex
+                      ].elements.filter((_, i) => i !== qIndex);
+                      setPages(updatedPages);
+                    }}
+                  />
+                ))}
+                <Menu shadow="md" width={690}>
+                  <Menu.Target>
+                    <Button>+ Thêm câu hỏi</Button>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item
+                      onClick={() => addQuestion("short_text", pageIndex)}
+                    >
+                      ✍️ Trả lời ngắn
+                    </Menu.Item>
+                    <Menu.Item
+                      onClick={() => addQuestion("multiple_choice", pageIndex)}
+                    >
+                      📝 Trắc nghiệm
+                    </Menu.Item>
+                    <Menu.Item
+                      onClick={() => addQuestion("checkbox", pageIndex)}
+                    >
+                      ✅ Checkbox nhiều lựa chọn
+                    </Menu.Item>
+                    <Menu.Item onClick={() => addQuestion("rating", pageIndex)}>
+                      🌟 Đánh giá
+                    </Menu.Item>
+                    <Menu.Item onClick={() => addQuestion("date", pageIndex)}>
+                      📅 Ngày tháng
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
+              </Stack>
+            </Paper>
+          ))}
+
+          <Button variant="light" color="gray" onClick={addPage}>
+            ➕ Tạo trang mới
+          </Button>
         </Stack>
       </Container>
-      {/* Responses Modal */}
+
+      {/* Modal */}
       <Modal
         opened={opened}
         onClose={() => setOpened(false)}
@@ -184,7 +256,6 @@ export default function FormBuilder() {
       >
         <Stack>
           <Text>Chia sẻ đường dẫn này để thu thập câu trả lời:</Text>
-
           <Group>
             <TextInput value={submissionLink} readOnly style={{ flex: 1 }} />
             <CopyButton value={submissionLink} timeout={2000}>
@@ -209,7 +280,6 @@ export default function FormBuilder() {
               )}
             </CopyButton>
           </Group>
-
           <Text size="sm" c="dimmed">
             Mọi người có thể truy cập đường dẫn này để điền biểu mẫu của bạn.
           </Text>
