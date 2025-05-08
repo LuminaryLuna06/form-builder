@@ -66,6 +66,30 @@ export default function FormSubmission() {
     setSubmitting(true);
 
     try {
+      const errors: string[] = [];
+
+      // Validate required questions
+      form.pages.forEach((page) => {
+        page.elements.forEach((q) => {
+          if (q.isRequired) {
+            const answer = responses[q.id]; // Access the answer by question ID
+            const isEmpty =
+              answer === undefined ||
+              answer === "" ||
+              (Array.isArray(answer) && answer.length === 0);
+
+            if (isEmpty) {
+              errors.push(`Bạn chưa trả lời câu hỏi: ${q.title}`);
+            }
+          }
+        });
+      });
+
+      if (errors.length > 0) {
+        alert(errors.join("\n")); // Show all errors in an alert
+        setSubmitting(false);
+        return;
+      }
       // Flatten tất cả câu hỏi từ các page
       const allQuestions = form.pages.flatMap((page) => page.elements);
 
@@ -109,11 +133,25 @@ export default function FormSubmission() {
         {form.pages.map((page, pageIndex) => (
           <Stack key={page.name} mb="xl">
             <Title order={3}>{page.title || `Trang ${pageIndex + 1}`}</Title>
-
+            <Group mt="xs">
+              <Text size="sm" color="red" fw={500}>
+                *
+              </Text>
+              <Text size="sm" color="white">
+                Is Required
+              </Text>
+            </Group>
             {page.elements.map((q) => (
               <Card key={q.id} withBorder shadow="xs" radius="md">
                 <Stack>
-                  <Text fw={500}>{q.title || "(Untitled question)"}</Text>
+                  <Group align="center">
+                    <Text fw={500}>{q.title || "(Untitled question)"}</Text>
+                    {q.isRequired && (
+                      <Text size="md" color="red" fw={500}>
+                        *
+                      </Text>
+                    )}
+                  </Group>
 
                   {q.type === "short_text" && (
                     <TextInput

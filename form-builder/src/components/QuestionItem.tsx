@@ -13,17 +13,21 @@ import {
   ActionIcon,
   Modal,
   Textarea,
+  Checkbox,
+  Radio,
+  NumberInput,
 } from "@mantine/core";
 import { Question } from "../types/form";
 import { useState } from "react";
 import { useClickOutside } from "@mantine/hooks";
 
-import { IconSettings } from "@tabler/icons-react";
+import { IconCopy, IconSettings, IconTrashFilled } from "@tabler/icons-react";
 
 interface QuestionItemProps {
   question: Question & { ratingCharacter?: string };
   onChange: (updated: Question) => void;
   onDelete?: () => void;
+  onDuplicate: () => void;
   index: number;
 }
 
@@ -44,6 +48,7 @@ export default function QuestionItem({
   question,
   onChange,
   onDelete,
+  onDuplicate,
   index,
 }: QuestionItemProps) {
   const [isActive, setIsActive] = useState(false);
@@ -65,6 +70,9 @@ export default function QuestionItem({
     const newOptions = [...question.options];
     newOptions[idx] = value;
     onChange({ ...question, options: newOptions });
+  };
+  const handleScoreChange = (value: number) => {
+    onChange({ ...question, score: value });
   };
 
   const handleRatingCharacterChange = (value: string) => {
@@ -103,6 +111,26 @@ export default function QuestionItem({
         }}
       >
         <Stack>
+          {isActive && (
+            <Group style={{ justifyContent: "flex-end" }}>
+              <ActionIcon
+                variant="light"
+                color="red"
+                onClick={onDelete}
+                title="Nhân đôi câu hỏi"
+              >
+                <IconTrashFilled size={16} />
+              </ActionIcon>
+              <ActionIcon
+                variant="light"
+                color="blue"
+                onClick={onDuplicate}
+                title="Nhân đôi câu hỏi"
+              >
+                <IconCopy size={16} />
+              </ActionIcon>
+            </Group>
+          )}
           <Group align="center">
             <Text fw="bold">{index + 1}.</Text>
             <TextInput
@@ -118,6 +146,26 @@ export default function QuestionItem({
             <Stack>
               {question.options?.map((opt, idx) => (
                 <Group key={idx} align="center">
+                  {question.type === "checkbox" ? (
+                    <Checkbox
+                      checked={question.correctAnswers?.includes(idx)}
+                      onChange={(e) => {
+                        const checked = e.currentTarget.checked;
+                        const current = question.correctAnswers || [];
+                        const updated = checked
+                          ? [...current, idx]
+                          : current.filter((i) => i !== idx);
+                        onChange({ ...question, correctAnswers: updated });
+                      }}
+                    />
+                  ) : (
+                    <Radio
+                      checked={question.correctAnswers?.[0] === idx}
+                      onChange={() =>
+                        onChange({ ...question, correctAnswers: [idx] })
+                      }
+                    />
+                  )}
                   <TextInput
                     placeholder={`Tuỳ chọn ${idx + 1}`}
                     value={opt}
@@ -204,13 +252,34 @@ export default function QuestionItem({
           {isActive && (
             <Group justify="space-between" mt="sm">
               <Group gap="xs">
-                {onDelete && (
-                  <Button color="red" variant="light" onClick={onDelete}>
-                    Xoá câu hỏi
-                  </Button>
+                {(question.type === "multiple_choice" ||
+                  question.type === "checkbox") && (
+                  <NumberInput
+                    label="Điểm số"
+                    placeholder="Nhập điểm cho câu hỏi này"
+                    value={question.score ?? 0}
+                    min={0}
+                    style={{ maxWidth: 100 }}
+                    onChange={(value) => handleScoreChange(Number(value))}
+                  />
                 )}
               </Group>
               <Group>
+                {(question.type === "multiple_choice" ||
+                  question.type === "checkbox") && (
+                  <Switch
+                    label={"Chọn nhiều"}
+                    checked={question.type === "checkbox"}
+                    onChange={() => {
+                      const newType =
+                        question.type === "multiple_choice"
+                          ? "checkbox"
+                          : "multiple_choice";
+                      onChange({ ...question, type: newType });
+                    }}
+                  />
+                )}
+
                 <Switch
                   label="Bắt buộc"
                   checked={question.isRequired || false}

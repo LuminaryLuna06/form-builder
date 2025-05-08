@@ -11,10 +11,12 @@ export interface Question {
   name: string;
   description?: string;
   title: string;
-  options?: string[]; // Chỉ dùng nếu là multiple_choice hoặc checkbox
-  ratingCharacter?: string; // Chỉ dùng nếu là rating
-  ratingScale?: number; // Add this line
+  options?: string[];
+  correctAnswers?: number[];
+  ratingCharacter?: string;
+  ratingScale?: number;
   isRequired?: boolean;
+  score?: number;
 }
 
 export interface Page {
@@ -27,6 +29,5 @@ export interface Page {
 export type FormData = {
   id: string;
   title: string;
-  // questions: Question[];
   pages: Page[];
 };

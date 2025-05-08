@@ -65,6 +65,8 @@ export default function FormBuilder() {
       description: "",
       title: "",
       options: [],
+      correctAnswers: [],
+      score: 0,
       ratingCharacter: type === "rating" ? "★" : "",
       ratingScale: type === "rating" ? 11 : 0,
       isRequired: false,
@@ -225,6 +227,23 @@ export default function FormBuilder() {
                       updatedPages[pageIndex].elements = updatedPages[
                         pageIndex
                       ].elements.filter((_, i) => i !== qIndex);
+                      setPages(updatedPages);
+                    }}
+                    onDuplicate={() => {
+                      const updatedPages = [...pages];
+                      const original = updatedPages[pageIndex].elements[qIndex];
+
+                      const duplicated = {
+                        ...original,
+                        id: uuidv4(), // tạo ID mới để tránh đụng lặp
+                        title: original.title + " (bản sao)",
+                      };
+
+                      updatedPages[pageIndex].elements.splice(
+                        qIndex + 1,
+                        0,
+                        duplicated
+                      );
                       setPages(updatedPages);
                     }}
                   />
