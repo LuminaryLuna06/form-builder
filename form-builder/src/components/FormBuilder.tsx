@@ -29,6 +29,7 @@ export default function FormBuilder() {
   const [title, setTitle] = useState("");
   const [pages, setPages] = useState<Page[]>([]);
   const [opened, setOpened] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
   const navigate = useNavigate();
 
   const submissionLink = `${window.location.origin}/#/form-submit/${id || ""}`;
@@ -61,6 +62,7 @@ export default function FormBuilder() {
       id: uuidv4(),
       name: `question_${uuidv4()}`,
       type,
+      description: "",
       title: "",
       options: [],
       ratingCharacter: type === "rating" ? "★" : "",
@@ -81,6 +83,7 @@ export default function FormBuilder() {
     };
     console.log("Saving form data:", formData);
     await saveFormToFirestore(formData);
+    setShowSaveModal(true);
   };
 
   const handlePreview = () => {
@@ -164,6 +167,23 @@ export default function FormBuilder() {
               withBorder
               style={{ backgroundColor: "#1a1b1e" }}
             >
+              <Group justify="space-between" align="center">
+                <Title order={4}>Trang {pageIndex + 1}</Title>
+                {pages.length > 1 && (
+                  <Button
+                    color="red"
+                    variant="light"
+                    size="xs"
+                    onClick={() => {
+                      const updatedPages = [...pages];
+                      updatedPages.splice(pageIndex, 1); // Xóa trang tại index
+                      setPages(updatedPages);
+                    }}
+                  >
+                    Xoá trang
+                  </Button>
+                )}
+              </Group>
               <Stack>
                 <Stack gap="xs">
                   <TextInput
@@ -284,6 +304,16 @@ export default function FormBuilder() {
             Mọi người có thể truy cập đường dẫn này để điền biểu mẫu của bạn.
           </Text>
         </Stack>
+      </Modal>
+      <Modal
+        opened={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        title="Đã lưu thành công"
+      >
+        <Text>Biểu mẫu của bạn đã được lưu.</Text>
+        <Button mt="md" onClick={() => setShowSaveModal(false)}>
+          Đóng
+        </Button>
       </Modal>
     </>
   );

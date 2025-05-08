@@ -9,10 +9,16 @@ import {
   Box,
   SegmentedControl,
   Divider,
+  Switch,
+  ActionIcon,
+  Modal,
+  Textarea,
 } from "@mantine/core";
 import { Question } from "../types/form";
 import { useState } from "react";
 import { useClickOutside } from "@mantine/hooks";
+
+import { IconSettings } from "@tabler/icons-react";
 
 interface QuestionItemProps {
   question: Question & { ratingCharacter?: string };
@@ -41,10 +47,17 @@ export default function QuestionItem({
   index,
 }: QuestionItemProps) {
   const [isActive, setIsActive] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const ref = useClickOutside(() => setIsActive(false));
 
   const handleTitleChange = (value: string) => {
     onChange({ ...question, title: value });
+  };
+  const handleNameChange = (value: string) => {
+    onChange({ ...question, name: value });
+  };
+  const handleDescriptionChange = (value: string) => {
+    onChange({ ...question, description: value });
   };
 
   const handleOptionChange = (value: string, idx: number) => {
@@ -56,6 +69,9 @@ export default function QuestionItem({
 
   const handleRatingCharacterChange = (value: string) => {
     onChange({ ...question, ratingCharacter: value });
+  };
+  const handleRequiredChange = (value: boolean) => {
+    onChange({ ...question, isRequired: value });
   };
 
   const addOption = () => {
@@ -185,12 +201,68 @@ export default function QuestionItem({
               style={{ maxWidth: 200 }}
             />
           )}
-          {isActive && onDelete && (
-            <Button color="red" variant="light" onClick={onDelete}>
-              Xoá câu hỏi
-            </Button>
+          {isActive && (
+            <Group justify="space-between" mt="sm">
+              <Group gap="xs">
+                {onDelete && (
+                  <Button color="red" variant="light" onClick={onDelete}>
+                    Xoá câu hỏi
+                  </Button>
+                )}
+              </Group>
+              <Group>
+                <Switch
+                  label="Bắt buộc"
+                  checked={question.isRequired || false}
+                  onChange={(event) =>
+                    handleRequiredChange(event.currentTarget.checked)
+                  }
+                />
+                <ActionIcon variant="light" onClick={() => setIsOpen(true)}>
+                  <IconSettings size={20} />
+                </ActionIcon>
+              </Group>
+            </Group>
           )}
         </Stack>
+        <Modal
+          opened={isOpen}
+          onClose={() => setIsOpen(false)}
+          title="Chỉnh sửa câu hỏi"
+        >
+          <Stack>
+            <TextInput
+              label="Question name"
+              value={question.name}
+              onChange={(e) => handleNameChange(e.currentTarget.value)}
+            />
+            <Textarea
+              label="Question title"
+              value={question.title}
+              onChange={(e) => handleTitleChange(e.currentTarget.value)}
+            />
+            <Textarea
+              label="Question description"
+              value={question.description}
+              onChange={(e) => handleDescriptionChange(e.currentTarget.value)}
+            />
+
+            <Button
+              onClick={() => {
+                const updated = {
+                  ...question,
+                  name: question.name,
+                  title: question.title,
+                  description: question.description,
+                };
+                onChange?.(updated);
+                setIsOpen(false);
+              }}
+            >
+              Lưu thay đổi
+            </Button>
+          </Stack>
+        </Modal>
       </Card>
     </div>
   );

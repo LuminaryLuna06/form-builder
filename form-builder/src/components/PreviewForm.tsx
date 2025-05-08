@@ -98,9 +98,12 @@ export default function PreviewForm() {
               {page.elements.map((q) => (
                 <Card key={q.id} withBorder shadow="xs" radius="md">
                   <Stack>
-                    <Text fw={500}>
-                      {q.title || "(Câu hỏi không có tiêu đề)"}
-                    </Text>
+                    <Stack gap={2}>
+                      <Text fw={500} size="lg">
+                        {q.title || "(Câu hỏi không có tiêu đề)"}
+                      </Text>
+                      <Text>{q.description || ""}</Text>
+                    </Stack>
 
                     {q.type === "short_text" && (
                       <TextInput placeholder="Nhập câu trả lời của bạn" />

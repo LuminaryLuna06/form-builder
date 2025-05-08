@@ -9,6 +9,7 @@ export interface Question {
   id: string;
   type: QuestionType;
   name: string;
+  description?: string;
   title: string;
   options?: string[]; // Chỉ dùng nếu là multiple_choice hoặc checkbox
   ratingCharacter?: string; // Chỉ dùng nếu là rating
