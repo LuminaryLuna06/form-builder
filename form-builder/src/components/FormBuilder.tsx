@@ -106,6 +106,43 @@ export default function FormBuilder() {
     setPages([...pages, newPage]);
   };
 
+  const moveQuestion = (
+    pageIndex: number,
+    questionId: string,
+    direction: "up" | "down"
+  ) => {
+    setPages((prevPages) => {
+      const updatedPages = [...prevPages];
+      const page = { ...updatedPages[pageIndex] }; // Create a new page object
+      const questionIndex = page.elements.findIndex((q) => q.id === questionId);
+
+      if (questionIndex === -1) return prevPages;
+
+      const newIndex =
+        direction === "up" ? questionIndex - 1 : questionIndex + 1;
+
+      // Check if new index is within bounds
+      if (newIndex < 0 || newIndex >= page.elements.length) return prevPages;
+
+      // Create a new array for elements
+      const newElements = [...page.elements];
+
+      // Swap the current question with its adjacent question
+      [newElements[questionIndex], newElements[newIndex]] = [
+        newElements[newIndex],
+        newElements[questionIndex],
+      ];
+
+      // Update the page with new elements
+      updatedPages[pageIndex] = {
+        ...page,
+        elements: newElements,
+      };
+
+      return updatedPages;
+    });
+  };
+
   return (
     <>
       {/* HEADER */}
@@ -246,6 +283,11 @@ export default function FormBuilder() {
                       );
                       setPages(updatedPages);
                     }}
+                    onMoveQuestion={(direction) =>
+                      moveQuestion(pageIndex, q.id, direction)
+                    }
+                    isFirstQuestion={qIndex === 0}
+                    isLastQuestion={qIndex === page.elements.length - 1}
                   />
                 ))}
                 <Menu shadow="md" width={690}>

@@ -22,6 +22,7 @@ import { useState } from "react";
 import { useClickOutside } from "@mantine/hooks";
 
 import { IconCopy, IconSettings, IconTrashFilled } from "@tabler/icons-react";
+import { IconArrowUp, IconArrowDown } from "@tabler/icons-react";
 
 interface QuestionItemProps {
   question: Question & { ratingCharacter?: string };
@@ -29,6 +30,9 @@ interface QuestionItemProps {
   onDelete?: () => void;
   onDuplicate: () => void;
   index: number;
+  onMoveQuestion: (direction: "up" | "down") => void;
+  isFirstQuestion: boolean;
+  isLastQuestion: boolean;
 }
 
 const ratingIcons = [
@@ -50,6 +54,9 @@ export default function QuestionItem({
   onDelete,
   onDuplicate,
   index,
+  onMoveQuestion,
+  isFirstQuestion,
+  isLastQuestion,
 }: QuestionItemProps) {
   const [isActive, setIsActive] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -113,6 +120,31 @@ export default function QuestionItem({
         <Stack>
           {isActive && (
             <Group style={{ justifyContent: "flex-end" }}>
+              <ActionIcon
+                variant="light"
+                color="gray"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMoveQuestion("up");
+                }}
+                title="Move question up"
+                disabled={isFirstQuestion}
+              >
+                <IconArrowUp size={16} />
+              </ActionIcon>
+
+              <ActionIcon
+                variant="light"
+                color="gray"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMoveQuestion("down");
+                }}
+                title="Move question down"
+                disabled={isLastQuestion}
+              >
+                <IconArrowDown size={16} />
+              </ActionIcon>
               <ActionIcon
                 variant="light"
                 color="red"

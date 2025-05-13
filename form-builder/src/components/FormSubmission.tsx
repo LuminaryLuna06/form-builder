@@ -15,15 +15,13 @@ import {
 } from "@mantine/core";
 import { useEffect, useState } from "react";
 import { FormData } from "../types/form";
-// import { loadFormFromLocalStorage } from "../utils/localStorage";
 import { useNavigate, useParams } from "react-router-dom";
 import { DateInput } from "@mantine/dates";
 import "dayjs/locale/vi";
 import "@mantine/dates/styles.css";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { doc, getDoc } from "firebase/firestore";
-import { db } from "../firebaseConfig"; // chỉnh lại nếu cần
-
+import { db } from "../firebaseConfig";
 export default function FormSubmission() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -93,21 +91,23 @@ export default function FormSubmission() {
       // Flatten tất cả câu hỏi từ các page
       const allQuestions = form.pages.flatMap((page) => page.elements);
 
-      // Tạo responses theo Q1, Q2...
-      const orderedResponses = allQuestions.reduce((acc, question, index) => {
-        if (responses[question.id] !== undefined) {
-          acc[`Q${index + 1}`] = {
-            title: question.title || `(Untitled question)`,
-            answer: responses[question.id],
-            type: question.type,
-          };
-        }
+      const orderedResponses = allQuestions
+        .filter((q) => responses[q.id] !== undefined)
+        .map((q) => ({
+          name: q.name,
+          answer: responses[q.id],
+          type: q.type,
+        }));
+
+      // Convert to { name: answer } format
+      const surveyResults = orderedResponses.reduce((acc, curr) => {
+        (acc as Record<string, any>)[curr.name] = curr.answer;
         return acc;
-      }, {} as Record<string, { title: string; answer: any; type: string }>);
+      }, {});
 
       await addDoc(collection(db, "responses", id, "submissions"), {
         formTitle: form.title,
-        responses: orderedResponses,
+        responses: surveyResults,
         createdAt: serverTimestamp(),
       });
 

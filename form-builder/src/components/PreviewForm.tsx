@@ -13,14 +13,13 @@ import {
 } from "@mantine/core";
 import { useEffect, useState } from "react";
 import { FormData } from "../types/form";
-// import { loadFormFromLocalStorage } from "../utils/localStorage";
 import { useNavigate } from "react-router-dom";
 import { useParams } from "react-router-dom";
 import { DateInput } from "@mantine/dates";
-import "dayjs/locale/vi"; // Optional: for Vietnamese locale
+import "dayjs/locale/vi";
 import "@mantine/dates/styles.css";
 import { doc, getDoc } from "firebase/firestore";
-import { db } from "../firebaseConfig"; // chỉnh lại nếu cần
+import { db } from "../firebaseConfig";
 
 export default function PreviewForm() {
   const navigate = useNavigate();
