@@ -23,6 +23,7 @@ import * as yup from "yup";
 import { FormData, FormResponses } from "../types/form";
 import { DateInput } from "@mantine/dates";
 import "dayjs/locale/vi";
+import dayjs from "dayjs";
 
 const createValidationSchema = (formData: FormData | null) => {
   const schema: Record<string, yup.AnySchema> = {};
@@ -236,10 +237,9 @@ export default function FormSubmissionTest() {
                         }
                         onChange={(date) => {
                           try {
-                            const value =
-                              date instanceof Date
-                                ? date.toISOString().split("T")[0]
-                                : null;
+                            const value = date
+                              ? dayjs(date).format("YYYY-MM-DD")
+                              : null;
                             form.setFieldValue(q.id, value);
                           } catch (error) {
                             console.error("Date conversion error:", error);

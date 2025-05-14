@@ -468,6 +468,54 @@ export default function FormResponses() {
                 </Box>
               </>
             )}
+
+            {stats.type === "date" && stats.answers.length > 0 && (
+              <>
+                <Text size="sm" mb="md">
+                  Total Responses: {stats.answers.length}
+                </Text>
+
+                {/* Show word cloud or frequent terms if implemented */}
+                {stats.frequentTerms && stats.frequentTerms.length > 0 && (
+                  <Box mb="md">
+                    <Text size="sm" fw={500}>
+                      Frequent Terms:
+                    </Text>
+                    <Group gap="xs" mt="xs">
+                      {stats.frequentTerms.map((term: any) => (
+                        <Badge key={term.text} variant="outline">
+                          {term.text} ({term.value})
+                        </Badge>
+                      ))}
+                    </Group>
+                  </Box>
+                )}
+
+                {/* Sample of responses */}
+                <Box>
+                  <Text size="sm" fw={500} mb="xs">
+                    Sample Responses:
+                  </Text>
+                  <Stack gap="xs">
+                    {stats.answers
+                      .slice(0, 5)
+                      .map((answer: string, index: number) => (
+                        <Paper key={index} p="xs" withBorder>
+                          <Text size="sm">
+                            {answer || <Text c="dimmed">[Empty response]</Text>}
+                          </Text>
+                        </Paper>
+                      ))}
+                    {stats.answers.length > 5 && (
+                      <Text size="sm" c="dimmed">
+                        + {stats.answers.length - 5} more responses...
+                      </Text>
+                    )}
+                  </Stack>
+                </Box>
+              </>
+            )}
+
             {stats.type === "rating" && stats.answers.length > 0 && (
               <>
                 <Text size="sm" mb="md">
@@ -490,6 +538,7 @@ export default function FormResponses() {
                 )}
               </>
             )}
+
             {stats.optionDistribution && stats.type === "multiple_choice" && (
               <>
                 <Divider my="md" />
@@ -520,6 +569,7 @@ export default function FormResponses() {
                 </SimpleGrid>
               </>
             )}
+
             {stats.optionDistribution && stats.type === "checkbox" && (
               <>
                 <Divider my="md" />
