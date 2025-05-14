@@ -15,24 +15,86 @@ import {
   rem,
 } from "@mantine/core";
 import { useState, useEffect } from "react";
-import { Question, FormData, QuestionType, Page } from "../types/form";
+import { Question, FormData, QuestionType } from "../types/form";
 import QuestionItem from "./QuestionItem";
+// import QuestionItemTest from "./QuestionItemTest";
 import { v4 as uuidv4 } from "uuid";
 import { useNavigate, useParams } from "react-router-dom";
 import { IconCopy, IconCheck } from "@tabler/icons-react";
 import { saveFormToFirestore } from "../utils/firebaseStorage";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
+import { useForm, yupResolver } from "@mantine/form";
+import * as yup from "yup";
+
+const formSchema = yup.object().shape({
+  title: yup.string().required("Form title is required"),
+  pages: yup.array().of(
+    yup.object().shape({
+      title: yup.string().optional(),
+      description: yup.string().optional(),
+      elements: yup.array().of(
+        yup.object().shape({
+          title: yup.string().required("Question title is required"),
+          name: yup.string(),
+          type: yup.string().required(),
+          isRequired: yup.boolean(),
+          options: yup.array().when("type", {
+            is: (type: string) =>
+              ["multiple_choice", "checkbox"].includes(type),
+            then: (schema) =>
+              schema
+                .of(yup.string().required("Option cannot be empty"))
+                .min(1, "Add at least one option"),
+          }),
+          // correctAnswers: yup.array().when("type", {
+          //   is: (type: string) =>
+          //     ["multiple_choice", "checkbox"].includes(type),
+          //   then: (schema) =>
+          //     schema.min(1, "Select at least one correct answer"),
+          // }),
+        })
+      ),
+    })
+  ),
+});
 
 export default function FormBuilder() {
   const { id } = useParams();
-  const [title, setTitle] = useState("");
-  const [pages, setPages] = useState<Page[]>([]);
+  const navigate = useNavigate();
   const [opened, setOpened] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
-  const navigate = useNavigate();
-
   const submissionLink = `${window.location.origin}/#/form-submit/${id || ""}`;
+
+  const form = useForm<FormData>({
+    initialValues: {
+      id: id || uuidv4(),
+      title: "",
+      pages: [
+        {
+          name: `page_${uuidv4()}`,
+          title: "",
+          description: "",
+          elements: [
+            {
+              id: uuidv4(),
+              name: `question_${uuidv4()}`,
+              type: "short_text" as QuestionType,
+              title: "",
+              description: "",
+              options: [],
+              correctAnswers: [],
+              score: 0,
+              ratingCharacter: "",
+              ratingScale: 0,
+              isRequired: false,
+            },
+          ],
+        },
+      ],
+    },
+    validate: yupResolver(formSchema),
+  });
 
   useEffect(() => {
     const fetchForm = async () => {
@@ -44,8 +106,9 @@ export default function FormBuilder() {
 
         if (docSnap.exists()) {
           const formData = docSnap.data() as FormData;
-          setTitle(formData.title);
-          setPages(formData.pages || []);
+          form.reset();
+          form.setValues(formData);
+          console.log(form.values);
         } else {
           console.warn("Form không tồn tại!");
         }
@@ -72,20 +135,22 @@ export default function FormBuilder() {
       isRequired: false,
     };
 
-    const updatedPages = [...pages];
-    updatedPages[pageIndex].elements.push(newQuestion);
-    setPages(updatedPages);
+    form.insertListItem(`pages.${pageIndex}.elements`, newQuestion);
   };
 
   const saveForm = async () => {
-    const formData: FormData = {
-      id: id || uuidv4(),
-      title,
-      pages,
-    };
-    console.log("Saving form data:", formData);
-    await saveFormToFirestore(formData);
-    setShowSaveModal(true);
+    const isValid = form.validate();
+    if (!isValid.hasErrors) {
+      console.log("Saving form data:", form.values);
+      await saveFormToFirestore(form.values);
+      setShowSaveModal(true);
+    } else {
+      console.log("Validation errors:", form.errors);
+
+      Object.entries(form.errors).forEach(([field, error]) => {
+        console.log(`Error in "${field}": ${error}`);
+      });
+    }
   };
 
   const handlePreview = () => {
@@ -99,11 +164,12 @@ export default function FormBuilder() {
   };
 
   const addPage = () => {
-    const newPage: Page = {
+    form.insertListItem("pages", {
       name: `page_${uuidv4()}`,
       elements: [],
-    };
-    setPages([...pages, newPage]);
+      title: "",
+      description: "",
+    });
   };
 
   const moveQuestion = (
@@ -111,35 +177,26 @@ export default function FormBuilder() {
     questionId: string,
     direction: "up" | "down"
   ) => {
-    setPages((prevPages) => {
-      const updatedPages = [...prevPages];
-      const page = { ...updatedPages[pageIndex] }; // Create a new page object
+    if (!form.values.pages) return;
+
+    form.setValues((prev) => {
+      const newPages = [...(prev.pages || [])];
+      const page = { ...newPages[pageIndex] };
       const questionIndex = page.elements.findIndex((q) => q.id === questionId);
 
-      if (questionIndex === -1) return prevPages;
-
+      if (questionIndex === -1) return prev;
       const newIndex =
         direction === "up" ? questionIndex - 1 : questionIndex + 1;
+      if (newIndex < 0 || newIndex >= page.elements.length) return prev;
 
-      // Check if new index is within bounds
-      if (newIndex < 0 || newIndex >= page.elements.length) return prevPages;
-
-      // Create a new array for elements
       const newElements = [...page.elements];
-
-      // Swap the current question with its adjacent question
       [newElements[questionIndex], newElements[newIndex]] = [
         newElements[newIndex],
         newElements[questionIndex],
       ];
 
-      // Update the page with new elements
-      updatedPages[pageIndex] = {
-        ...page,
-        elements: newElements,
-      };
-
-      return updatedPages;
+      newPages[pageIndex] = { ...page, elements: newElements };
+      return { ...prev, pages: newPages };
     });
   };
 
@@ -160,7 +217,9 @@ export default function FormBuilder() {
         }}
       >
         <Group justify="right">
-          <Title order={4}>Biểu mẫu: {title || "(Chưa đặt tiêu đề)"}</Title>
+          <Title order={4}>
+            Biểu mẫu: {form.values.title || "(Chưa đặt tiêu đề)"}
+          </Title>
 
           <Group>
             <Button variant="light" color="green" onClick={saveForm}>
@@ -193,11 +252,11 @@ export default function FormBuilder() {
           <TextInput
             label="Tên biểu mẫu"
             placeholder="Nhập tiêu đề biểu mẫu..."
-            value={title}
-            onChange={(e) => setTitle(e.currentTarget.value)}
+            {...form.getInputProps("title")}
+            required
           />
 
-          {pages.map((page, pageIndex) => (
+          {form.values.pages.map((page, pageIndex) => (
             <Paper
               key={page.name}
               shadow="xs"
@@ -208,16 +267,12 @@ export default function FormBuilder() {
             >
               <Group justify="space-between" align="center">
                 <Title order={4}>Trang {pageIndex + 1}</Title>
-                {pages.length > 1 && (
+                {form.values.pages.length > 1 && (
                   <Button
                     color="red"
                     variant="light"
                     size="xs"
-                    onClick={() => {
-                      const updatedPages = [...pages];
-                      updatedPages.splice(pageIndex, 1); // Xóa trang tại index
-                      setPages(updatedPages);
-                    }}
+                    onClick={() => form.removeListItem("pages", pageIndex)}
                   >
                     Xoá trang
                   </Button>
@@ -229,23 +284,14 @@ export default function FormBuilder() {
                     label={`Tiêu đề trang ${pageIndex + 1}`}
                     placeholder="Ví dụ: Thông tin chung"
                     value={page.title || ""}
-                    onChange={(e) => {
-                      const updatedPages = [...pages];
-                      updatedPages[pageIndex].title = e.currentTarget.value;
-                      setPages(updatedPages);
-                    }}
+                    {...form.getInputProps(`pages.${pageIndex}.title`)}
                   />
 
                   <TextInput
                     label="Mô tả trang"
                     placeholder="Thêm mô tả ngắn cho trang này..."
                     value={page.description || ""}
-                    onChange={(e) => {
-                      const updatedPages = [...pages];
-                      updatedPages[pageIndex].description =
-                        e.currentTarget.value;
-                      setPages(updatedPages);
-                    }}
+                    {...form.getInputProps(`pages.${pageIndex}.description`)}
                   />
                 </Stack>
 
@@ -255,33 +301,28 @@ export default function FormBuilder() {
                     question={q}
                     index={qIndex}
                     onChange={(updated) => {
-                      const updatedPages = [...pages];
-                      updatedPages[pageIndex].elements[qIndex] = updated;
-                      setPages(updatedPages);
+                      form.setFieldValue(
+                        `pages.${pageIndex}.elements.${qIndex}`,
+                        updated
+                      );
                     }}
                     onDelete={() => {
-                      const updatedPages = [...pages];
-                      updatedPages[pageIndex].elements = updatedPages[
-                        pageIndex
-                      ].elements.filter((_, i) => i !== qIndex);
-                      setPages(updatedPages);
+                      form.removeListItem(
+                        `pages.${pageIndex}.elements`,
+                        qIndex
+                      );
                     }}
                     onDuplicate={() => {
-                      const updatedPages = [...pages];
-                      const original = updatedPages[pageIndex].elements[qIndex];
-
                       const duplicated = {
-                        ...original,
-                        id: uuidv4(), // tạo ID mới để tránh đụng lặp
-                        title: original.title + " (bản sao)",
+                        ...q,
+                        id: uuidv4(),
+                        title: q.title + " (copy)",
                       };
-
-                      updatedPages[pageIndex].elements.splice(
-                        qIndex + 1,
-                        0,
-                        duplicated
+                      form.insertListItem(
+                        `pages.${pageIndex}.elements`,
+                        duplicated,
+                        qIndex + 1
                       );
-                      setPages(updatedPages);
                     }}
                     onMoveQuestion={(direction) =>
                       moveQuestion(pageIndex, q.id, direction)

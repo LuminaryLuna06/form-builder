@@ -31,3 +31,8 @@ export type FormData = {
   title: string;
   pages: Page[];
 };
+
+export type FormResponses = Record<
+  string,
+  string | string[] | number | Date | null
+>;
