@@ -291,8 +291,7 @@ export default function QuestionItem({
             {isActive && (
               <Group justify="space-between" mt="sm">
                 <Group gap="xs">
-                  {(form.values.type === "multiple_choice" ||
-                    form.values.type === "checkbox") && (
+                  {form.values.isScored && (
                     <NumberInput
                       label="Điểm số"
                       placeholder="Nhập điểm cho câu hỏi này"
@@ -306,16 +305,23 @@ export default function QuestionItem({
                 <Group>
                   {(form.values.type === "multiple_choice" ||
                     form.values.type === "checkbox") && (
-                    <Switch
-                      label={"Chọn nhiều"}
-                      checked={form.values.type === "checkbox"}
-                      onChange={(event) => {
-                        const newType = event.currentTarget.checked
-                          ? "checkbox"
-                          : "multiple_choice";
-                        form.setFieldValue("type", newType);
-                      }}
-                    />
+                    <Group>
+                      <Switch
+                        label={"Trắc nghiệm"}
+                        checked={form.values.isScored || false}
+                        {...form.getInputProps("isScored")}
+                      />
+                      <Switch
+                        label={"Chọn nhiều"}
+                        checked={form.values.type === "checkbox"}
+                        onChange={(event) => {
+                          const newType = event.currentTarget.checked
+                            ? "checkbox"
+                            : "multiple_choice";
+                          form.setFieldValue("type", newType);
+                        }}
+                      />
+                    </Group>
                   )}
 
                   <Switch

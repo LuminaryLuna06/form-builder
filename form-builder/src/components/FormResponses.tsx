@@ -257,7 +257,7 @@ export default function FormResponses() {
 
     // Add statistics section
     txtContent += "\n=== STATISTICS ===\n\n";
-    Object.entries(questionStats).forEach(([qKey, stat]) => {
+    Object.entries(questionStats).forEach(([_, stat]) => {
       txtContent += `Question: ${stat.title} (${stat.type})\n`;
       txtContent += `Total answers: ${stat.totalAnswers}\n`;
 

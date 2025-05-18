@@ -16,6 +16,7 @@ export interface Question {
   ratingCharacter?: string;
   ratingScale?: number;
   isRequired?: boolean;
+  isScored?: boolean;
   score?: number;
 }
 
