@@ -187,6 +187,7 @@ export default function FormResponses() {
             questionMap[qKey]?.type || "-"
           })`
       ),
+      "Score",
     ];
 
     const rows = snapshot.docs.map((doc) => {
@@ -202,12 +203,13 @@ export default function FormResponses() {
           }
           return JSON.stringify(answer);
         }),
+        `${response.totalScore * 100}%`,
       ];
     });
 
     const csvContent = [
-      headers.join(","),
-      ...rows.map((row) => row.join(",")),
+      headers.join(";"),
+      ...rows.map((row) => row.join(";")),
     ].join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });

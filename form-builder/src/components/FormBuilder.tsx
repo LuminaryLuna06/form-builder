@@ -14,6 +14,7 @@ import {
   ActionIcon,
   rem,
 } from "@mantine/core";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { useState, useEffect } from "react";
 import { Question, FormData, QuestionType } from "../types/form";
 import QuestionItem from "./QuestionItem";
@@ -31,7 +32,7 @@ const formSchema = yup.object().shape({
   title: yup.string().required("Form title is required"),
   pages: yup.array().of(
     yup.object().shape({
-      title: yup.string().optional(),
+      title: yup.string().required("Page title is required"),
       description: yup.string().optional(),
       elements: yup.array().of(
         yup.object().shape({
@@ -39,6 +40,7 @@ const formSchema = yup.object().shape({
           name: yup.string(),
           type: yup.string().required(),
           isRequired: yup.boolean(),
+          allowOtherAnswer: yup.boolean(),
           options: yup.array().when("type", {
             is: (type: string) =>
               ["multiple_choice", "checkbox"].includes(type),
@@ -47,12 +49,7 @@ const formSchema = yup.object().shape({
                 .of(yup.string().required("Option cannot be empty"))
                 .min(1, "Add at least one option"),
           }),
-          // correctAnswers: yup.array().when("type", {
-          //   is: (type: string) =>
-          //     ["multiple_choice", "checkbox"].includes(type),
-          //   then: (schema) =>
-          //     schema.min(1, "Select at least one correct answer"),
-          // }),
+          
         })
       ),
     })
@@ -70,6 +67,7 @@ export default function FormBuilder() {
     initialValues: {
       id: id || uuidv4(),
       title: "",
+      // totalScore: 0,
       pages: [
         {
           name: `page_${uuidv4()}`,
@@ -88,6 +86,7 @@ export default function FormBuilder() {
               ratingCharacter: "",
               ratingScale: 0,
               isRequired: false,
+              allowOtherAnswer: false,
             },
           ],
         },
@@ -133,6 +132,7 @@ export default function FormBuilder() {
       ratingCharacter: type === "rating" ? "★" : "",
       ratingScale: type === "rating" ? 11 : 0,
       isRequired: false,
+      allowOtherAnswer: false,
     };
 
     form.insertListItem(`pages.${pageIndex}.elements`, newQuestion);
@@ -256,112 +256,191 @@ export default function FormBuilder() {
             required
           />
 
-          {form.values.pages.map((page, pageIndex) => (
-            <Paper
-              key={page.name}
-              shadow="xs"
-              p="md"
-              radius="md"
-              withBorder
-              style={{ backgroundColor: "#1a1b1e" }}
-            >
-              <Group justify="space-between" align="center">
-                <Title order={4}>Trang {pageIndex + 1}</Title>
-                {form.values.pages.length > 1 && (
-                  <Button
-                    color="red"
-                    variant="light"
-                    size="xs"
-                    onClick={() => form.removeListItem("pages", pageIndex)}
-                  >
-                    Xoá trang
-                  </Button>
-                )}
-              </Group>
-              <Stack>
-                <Stack gap="xs">
-                  <TextInput
-                    label={`Tiêu đề trang ${pageIndex + 1}`}
-                    placeholder="Ví dụ: Thông tin chung"
-                    value={page.title || ""}
-                    {...form.getInputProps(`pages.${pageIndex}.title`)}
-                  />
+          <DragDropContext
+            onDragEnd={({ destination, source }) => {
+              if (!destination) return;
 
-                  <TextInput
-                    label="Mô tả trang"
-                    placeholder="Thêm mô tả ngắn cho trang này..."
-                    value={page.description || ""}
-                    {...form.getInputProps(`pages.${pageIndex}.description`)}
-                  />
+              const sourcePageIndex = parseInt(
+                source.droppableId.split("-")[1]
+              );
+              const destPageIndex = parseInt(
+                destination.droppableId.split("-")[1]
+              );
+
+              if (sourcePageIndex === destPageIndex) {
+                // Same page drag-and-drop
+                form.reorderListItem(`pages.${sourcePageIndex}.elements`, {
+                  from: source.index,
+                  to: destination.index,
+                });
+              } else {
+                // Cross-page drag-and-drop
+                form.setValues((prev) => {
+                  const newPages = [...(prev.pages || [])];
+                  const sourcePage = { ...newPages[sourcePageIndex] };
+                  const destPage = { ...newPages[destPageIndex] };
+
+                  // Remove question from source page
+                  const [movedQuestion] = sourcePage.elements.splice(
+                    source.index,
+                    1
+                  );
+
+                  // Insert question into destination page
+                  destPage.elements.splice(destination.index, 0, movedQuestion);
+
+                  // Update pages
+                  newPages[sourcePageIndex] = { ...sourcePage };
+                  newPages[destPageIndex] = { ...destPage };
+
+                  return { ...prev, pages: newPages };
+                });
+              }
+            }}
+          >
+            {form.values.pages.map((page, pageIndex) => (
+              <Paper
+                key={page.name}
+                shadow="xs"
+                p="md"
+                radius="md"
+                withBorder
+                style={{ backgroundColor: "#1a1b1e" }}
+              >
+                <Group justify="space-between" align="center">
+                  <Title order={4}>Trang {pageIndex + 1}</Title>
+                  {form.values.pages.length > 1 && (
+                    <Button
+                      color="red"
+                      variant="light"
+                      size="xs"
+                      onClick={() => form.removeListItem("pages", pageIndex)}
+                    >
+                      Xoá trang
+                    </Button>
+                  )}
+                </Group>
+                <Stack>
+                  <Stack gap="xs">
+                    <TextInput
+                      label={`Tiêu đề trang ${pageIndex + 1}`}
+                      placeholder="Ví dụ: Thông tin chung"
+                      {...form.getInputProps(`pages.${pageIndex}.title`)}
+                      required
+                    />
+
+                    <TextInput
+                      label="Mô tả trang"
+                      placeholder="Thêm mô tả ngắn cho trang này..."
+                      {...form.getInputProps(`pages.${pageIndex}.description`)}
+                    />
+                  </Stack>
+
+                  <Droppable droppableId={`page-${pageIndex}`}>
+                    {(provided) => (
+                      <div
+                        {...provided.droppableProps}
+                        ref={provided.innerRef}
+                        style={{ marginBottom: 16 }}
+                      >
+                        {page.elements.map((q, qIndex) => (
+                          <Draggable
+                            key={q.id}
+                            draggableId={q.id}
+                            index={qIndex}
+                          >
+                            {(provided) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                style={{
+                                  ...provided.draggableProps.style,
+                                  marginBottom: 16,
+                                }}
+                              >
+                                <QuestionItem
+                                  question={q}
+                                  index={qIndex}
+                                  pageIndex={pageIndex}
+                                  dragHandleProps={provided.dragHandleProps}
+                                  onChange={(updated) => {
+                                    form.setFieldValue(
+                                      `pages.${pageIndex}.elements.${qIndex}`,
+                                      updated
+                                    );
+                                  }}
+                                  onDelete={() => {
+                                    form.removeListItem(
+                                      `pages.${pageIndex}.elements`,
+                                      qIndex
+                                    );
+                                  }}
+                                  onDuplicate={() => {
+                                    const duplicated = {
+                                      ...q,
+                                      id: uuidv4(),
+                                      title: q.title + " (copy)",
+                                    };
+                                    form.insertListItem(
+                                      `pages.${pageIndex}.elements`,
+                                      duplicated,
+                                      qIndex + 1
+                                    );
+                                  }}
+                                  isFirstQuestion={qIndex === 0}
+                                  isLastQuestion={
+                                    qIndex === page.elements.length - 1
+                                  }
+                                  onMoveQuestion={(direction) =>
+                                    moveQuestion(pageIndex, q.id, direction)
+                                  }
+                                  form={form}
+                                />
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
+
+                  <Menu shadow="md" width={690}>
+                    <Menu.Target>
+                      <Button>+ Thêm câu hỏi</Button>
+                    </Menu.Target>
+                    <Menu.Dropdown>
+                      <Menu.Item
+                        onClick={() => addQuestion("short_text", pageIndex)}
+                      >
+                        ✍️ Trả lời ngắn
+                      </Menu.Item>
+                      <Menu.Item
+                        onClick={() =>
+                          addQuestion("multiple_choice", pageIndex)
+                        }
+                      >
+                        📝 Trắc nghiệm
+                      </Menu.Item>
+                      <Menu.Item
+                        onClick={() => addQuestion("checkbox", pageIndex)}
+                      >
+                        ✅ Checkbox nhiều lựa chọn
+                      </Menu.Item>
+                      <Menu.Item
+                        onClick={() => addQuestion("rating", pageIndex)}
+                      >
+                        🌟 Đánh giá
+                      </Menu.Item>
+                      <Menu.Item onClick={() => addQuestion("date", pageIndex)}>
+                        📅 Ngày tháng
+                      </Menu.Item>
+                    </Menu.Dropdown>
+                  </Menu>
                 </Stack>
-
-                {page.elements.map((q, qIndex) => (
-                  <QuestionItem
-                    key={q.id}
-                    question={q}
-                    index={qIndex}
-                    onChange={(updated) => {
-                      form.setFieldValue(
-                        `pages.${pageIndex}.elements.${qIndex}`,
-                        updated
-                      );
-                    }}
-                    onDelete={() => {
-                      form.removeListItem(
-                        `pages.${pageIndex}.elements`,
-                        qIndex
-                      );
-                    }}
-                    onDuplicate={() => {
-                      const duplicated = {
-                        ...q,
-                        id: uuidv4(),
-                        title: q.title + " (copy)",
-                      };
-                      form.insertListItem(
-                        `pages.${pageIndex}.elements`,
-                        duplicated,
-                        qIndex + 1
-                      );
-                    }}
-                    onMoveQuestion={(direction) =>
-                      moveQuestion(pageIndex, q.id, direction)
-                    }
-                    isFirstQuestion={qIndex === 0}
-                    isLastQuestion={qIndex === page.elements.length - 1}
-                  />
-                ))}
-                <Menu shadow="md" width={690}>
-                  <Menu.Target>
-                    <Button>+ Thêm câu hỏi</Button>
-                  </Menu.Target>
-                  <Menu.Dropdown>
-                    <Menu.Item
-                      onClick={() => addQuestion("short_text", pageIndex)}
-                    >
-                      ✍️ Trả lời ngắn
-                    </Menu.Item>
-                    <Menu.Item
-                      onClick={() => addQuestion("multiple_choice", pageIndex)}
-                    >
-                      📝 Trắc nghiệm
-                    </Menu.Item>
-                    <Menu.Item
-                      onClick={() => addQuestion("checkbox", pageIndex)}
-                    >
-                      ✅ Checkbox nhiều lựa chọn
-                    </Menu.Item>
-                    <Menu.Item onClick={() => addQuestion("rating", pageIndex)}>
-                      🌟 Đánh giá
-                    </Menu.Item>
-                    <Menu.Item onClick={() => addQuestion("date", pageIndex)}>
-                      📅 Ngày tháng
-                    </Menu.Item>
-                  </Menu.Dropdown>
-                </Menu>
-              </Stack>
-            </Paper>
-          ))}
+              </Paper>
+            ))}
+          </DragDropContext>
 
           <Button variant="light" color="gray" onClick={addPage}>
             ➕ Tạo trang mới

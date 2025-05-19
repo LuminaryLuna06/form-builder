@@ -18,6 +18,7 @@ export interface Question {
   isRequired?: boolean;
   isScored?: boolean;
   score?: number;
+  allowOtherAnswer?: boolean;
 }
 
 export interface Page {
@@ -31,6 +32,7 @@ export type FormData = {
   id: string;
   title: string;
   pages: Page[];
+  // totalScore: number;
 };
 
 export type FormResponses = Record<
