@@ -185,8 +185,8 @@ export default function FormSubmissionTest() {
       // Calculate totalScore as a percentage
       const totalScore =
         totalPossibleScore > 0
-          ? ((userScore / totalPossibleScore) * 100).toFixed(2) + "%"
-          : "0.00%";
+          ? (userScore / totalPossibleScore).toFixed(2)
+          : 0;
 
       const surveyResults = orderedResponses.reduce(
         (

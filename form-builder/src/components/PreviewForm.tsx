@@ -13,8 +13,7 @@ import {
 } from "@mantine/core";
 import { useEffect, useState } from "react";
 import { FormData } from "../types/form";
-import { useNavigate } from "react-router-dom";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { DateInput } from "@mantine/dates";
 import "dayjs/locale/vi";
 import "@mantine/dates/styles.css";
@@ -105,7 +104,7 @@ export default function PreviewForm() {
                     </Stack>
 
                     {q.type === "short_text" && (
-                      <TextInput placeholder="Nhập câu trả lời của bạn" />
+                      <TextInput placeholder="Nhập câu trả lời của bạn" disabled />
                     )}
 
                     {q.type === "multiple_choice" && q.options && (
@@ -118,6 +117,15 @@ export default function PreviewForm() {
                               label={opt || `Lựa chọn ${idx + 1}`}
                             />
                           ))}
+                          {q.allowOtherAnswer && (
+                            <Group align="center">
+                              <Radio value="other" label="Khác" />
+                              <TextInput
+                                placeholder="Vui lòng nêu rõ"
+                                disabled
+                              />
+                            </Group>
+                          )}
                         </Stack>
                       </Radio.Group>
                     )}
@@ -130,6 +138,15 @@ export default function PreviewForm() {
                             label={opt || `Tuỳ chọn ${idx + 1}`}
                           />
                         ))}
+                        {q.allowOtherAnswer && (
+                          <Group align="center">
+                            <Checkbox value="other" label="Khác" />
+                            <TextInput
+                              placeholder="Vui lòng nêu rõ"
+                              disabled
+                            />
+                          </Group>
+                        )}
                       </Stack>
                     )}
 
@@ -163,6 +180,7 @@ export default function PreviewForm() {
                         valueFormat="DD/MM/YYYY"
                         locale="vi"
                         style={{ maxWidth: 400 }}
+                        disabled
                       />
                     )}
                   </Stack>
