@@ -18,9 +18,8 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { useState, useEffect } from "react";
 import { Question, FormData, QuestionType } from "../types/form";
 import QuestionItem from "./QuestionItem";
-// import QuestionItemTest from "./QuestionItemTest";
 import { v4 as uuidv4 } from "uuid";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { IconCopy, IconCheck } from "@tabler/icons-react";
 import { saveFormToFirestore } from "../utils/firebaseStorage";
 import { doc, getDoc } from "firebase/firestore";
@@ -49,7 +48,6 @@ const formSchema = yup.object().shape({
                 .of(yup.string().required("Option cannot be empty"))
                 .min(1, "Add at least one option"),
           }),
-          
         })
       ),
     })
@@ -59,15 +57,20 @@ const formSchema = yup.object().shape({
 export default function FormBuilder() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [opened, setOpened] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const submissionLink = `${window.location.origin}/#/form-submit/${id || ""}`;
+
+  const queryParams = new URLSearchParams(location.search);
+  const isQuiz = queryParams.get("isQuiz") === "true";
+  console.log(isQuiz);
 
   const form = useForm<FormData>({
     initialValues: {
       id: id || uuidv4(),
       title: "",
-      // totalScore: 0,
+      isQuiz: isQuiz,
       pages: [
         {
           name: `page_${uuidv4()}`,
@@ -77,16 +80,17 @@ export default function FormBuilder() {
             {
               id: uuidv4(),
               name: `question_${uuidv4()}`,
-              type: "short_text" as QuestionType,
+              type: isQuiz ? "multiple_choice" : ("short_text" as QuestionType),
               title: "",
               description: "",
-              options: [],
+              options: isQuiz ? ["Option 1", "Option 2"] : [],
               correctAnswers: [],
-              score: 0,
+              score: isQuiz ? 1 : 0,
               ratingCharacter: "",
               ratingScale: 0,
               isRequired: false,
               allowOtherAnswer: false,
+              isScored: isQuiz,
             },
           ],
         },
@@ -126,13 +130,14 @@ export default function FormBuilder() {
       type,
       description: "",
       title: "",
-      options: [],
+      options: form.values.isQuiz ? ["Option 1", "Option 2"] : [],
       correctAnswers: [],
-      score: 0,
+      score: form.values.isQuiz ? 1 : 0,
       ratingCharacter: type === "rating" ? "★" : "",
       ratingScale: type === "rating" ? 11 : 0,
       isRequired: false,
       allowOtherAnswer: false,
+      isScored: form.values.isQuiz,
     };
 
     form.insertListItem(`pages.${pageIndex}.elements`, newQuestion);
@@ -245,7 +250,7 @@ export default function FormBuilder() {
       {/* BODY */}
       <Container size="sm" py="xl">
         <Title order={2} mb="lg">
-          Trình tạo biểu mẫu
+          Trình tạo {form.values.isQuiz ? "bài trắc nghiệm" : "biểu mẫu"}
         </Title>
 
         <Stack>

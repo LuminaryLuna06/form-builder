@@ -41,7 +41,7 @@ interface QuestionItemProps {
   isFirstQuestion: boolean;
   isLastQuestion: boolean;
   dragHandleProps: DraggableProvidedDragHandleProps | null;
-  form: UseFormReturnType<any>; // Form from FormBuilder
+  form: UseFormReturnType<any>;
 }
 
 const ratingIcons = [
@@ -76,25 +76,21 @@ export default function QuestionItem({
   const [localError, setLocalError] = useState<string | null>(null);
   const ref = useClickOutside(() => setIsActive(true));
 
-  // Sync localQuestion with props
   useEffect(() => {
     setLocalQuestion(question);
   }, [question]);
 
-  // Handle changes to fields not managed by form.getInputProps
   const handleLocalChange = (updates: Partial<Question>) => {
     const updatedQuestion = { ...localQuestion, ...updates };
     setLocalQuestion(updatedQuestion);
     onChange(updatedQuestion);
   };
 
-  // Validate and add option
   const addOption = () => {
     const newOptions = [...(localQuestion.options || []), ""];
     handleLocalChange({ options: newOptions });
   };
 
-  // Validate and remove option
   const removeOption = (idx: number) => {
     const newOptions = (localQuestion.options || []).filter(
       (_, i) => i !== idx
@@ -108,7 +104,6 @@ export default function QuestionItem({
     });
   };
 
-  // Validate correctAnswers
   const validateCorrectAnswers = (newIndices: number[]) => {
     if (
       newIndices.some(
@@ -120,6 +115,19 @@ export default function QuestionItem({
     }
     setLocalError(null);
     return true;
+  };
+
+  // Handle toggling allowOtherAnswer to clean up correctAnswers
+  const handleAllowOtherAnswerChange = (checked: boolean) => {
+    let newCorrectAnswers = localQuestion.correctAnswers || [];
+    if (!checked) {
+      // Remove "Other" (-1) from correctAnswers when disabling allowOtherAnswer
+      newCorrectAnswers = newCorrectAnswers.filter((i) => i !== -1);
+    }
+    handleLocalChange({
+      allowOtherAnswer: checked,
+      correctAnswers: newCorrectAnswers,
+    });
   };
 
   return (
@@ -209,7 +217,7 @@ export default function QuestionItem({
           {(localQuestion.type === "multiple_choice" ||
             localQuestion.type === "checkbox") && (
             <Stack>
-              {localQuestion.options?.map((_, idx) => (
+              {localQuestion.options?.map((option, idx) => (
                 <Group key={idx} align="center">
                   {localQuestion.type === "checkbox" ? (
                     <Checkbox
@@ -249,7 +257,7 @@ export default function QuestionItem({
                 </Group>
               ))}
               {localQuestion.allowOtherAnswer && (
-                <Group align="center">
+                <Group key="other-option" align="center">
                   {localQuestion.type === "checkbox" ? (
                     <Checkbox
                       checked={localQuestion.correctAnswers?.includes(-1)}
@@ -373,13 +381,6 @@ export default function QuestionItem({
                   localQuestion.type === "checkbox") && (
                   <Group>
                     <Switch
-                      label="Trắc nghiệm"
-                      checked={localQuestion.isScored || false}
-                      onChange={(e) =>
-                        handleLocalChange({ isScored: e.currentTarget.checked })
-                      }
-                    />
-                    <Switch
                       label="Chọn nhiều"
                       checked={localQuestion.type === "checkbox"}
                       onChange={(event) => {
@@ -393,9 +394,7 @@ export default function QuestionItem({
                       label="Câu trả lời khác"
                       checked={localQuestion.allowOtherAnswer || false}
                       onChange={(e) =>
-                        handleLocalChange({
-                          allowOtherAnswer: e.currentTarget.checked,
-                        })
+                        handleAllowOtherAnswerChange(e.currentTarget.checked)
                       }
                     />
                   </Group>

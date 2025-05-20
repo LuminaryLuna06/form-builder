@@ -184,7 +184,9 @@ export default function FormSubmissionTest() {
 
       // Calculate totalScore as a percentage
       const totalScore =
-        totalPossibleScore > 0 ? userScore / totalPossibleScore : 0;
+        totalPossibleScore > 0
+          ? ((userScore / totalPossibleScore) * 100).toFixed(2) + "%"
+          : "0.00%";
 
       const surveyResults = orderedResponses.reduce(
         (
@@ -302,30 +304,6 @@ export default function FormSubmissionTest() {
                               <TextInput
                                 placeholder="Vui lòng nêu rõ"
                                 {...form.getInputProps(q.id + "_other")}
-                                onChange={(event) => {
-                                  const value = event.currentTarget.value;
-                                  form.setFieldValue(q.id + "_other", value);
-                                  const currentOptions = Array.isArray(
-                                    form.values[q.id]
-                                  )
-                                    ? (form.values[q.id] as string[])
-                                    : [];
-                                  if (currentOptions.includes("other")) {
-                                    const newOptions = currentOptions.filter(
-                                      (opt) => {
-                                        const isCustomInput =
-                                          opt !== "other" &&
-                                          q.options &&
-                                          !q.options.includes(opt);
-                                        return !isCustomInput;
-                                      }
-                                    );
-                                    if (value && !newOptions.includes(value)) {
-                                      newOptions.push(value);
-                                    }
-                                    form.setFieldValue(q.id, newOptions);
-                                  }
-                                }}
                                 disabled={
                                   !Array.isArray(form.values[q.id]) ||
                                   !(form.values[q.id] as string[]).includes(

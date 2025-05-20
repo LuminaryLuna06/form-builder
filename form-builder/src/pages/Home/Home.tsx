@@ -39,6 +39,11 @@ export default function Home() {
     const newId = uuidv4();
     navigate(`/create-form/${newId}`);
   };
+
+  const createQuiz = () => {
+    const newId = uuidv4();
+    navigate(`/create-form/${newId}?isQuiz=true`);
+  };
   const deleteForm = async (id: string) => {
     try {
       await deleteDoc(doc(db, "forms", id));
@@ -53,7 +58,10 @@ export default function Home() {
       <Stack>
         <Title order={2}>Chào mừng đến MSForm Fake</Title>
 
-        <Button onClick={createForm}>➕ Tạo biểu mẫu mới</Button>
+        <Group>
+          <Button onClick={createForm}>➕ Tạo biểu mẫu mới</Button>
+          <Button onClick={createQuiz}>📝 Tạo bài trắc nghiệm</Button>
+        </Group>
 
         <Title order={4} mt="lg">
           📋 Danh sách biểu mẫu đã tạo:

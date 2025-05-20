@@ -32,7 +32,7 @@ export type FormData = {
   id: string;
   title: string;
   pages: Page[];
-  // totalScore: number;
+  isQuiz: boolean;
 };
 
 export type FormResponses = Record<
