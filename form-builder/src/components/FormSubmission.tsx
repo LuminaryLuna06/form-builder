@@ -19,7 +19,6 @@ import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import * as yup from "yup";
-
 import { FormData, FormResponses } from "../types/form";
 import { DateInput } from "@mantine/dates";
 import "dayjs/locale/vi";
@@ -49,7 +48,18 @@ const createValidationSchema = (formData: FormData | null) => {
   return yup.object().shape(schema);
 };
 
-export default function FormSubmissionTest() {
+// Fisher-Yates shuffle algorithm with explicit type
+const shuffleArray = (array: string[]): string[] => {
+  if (!array || !Array.isArray(array)) return [];
+  const newArray = [...array];
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+  }
+  return newArray;
+};
+
+export default function FormSubmission() {
   const navigate = useNavigate();
   const { id } = useParams();
   const [submitting, setSubmitting] = useState(false);
@@ -57,6 +67,9 @@ export default function FormSubmissionTest() {
   const [otherSelected, setOtherSelected] = useState<Record<string, boolean>>(
     {}
   );
+  const [shuffledOptions, setShuffledOptions] = useState<
+    Record<string, { options: string[]; indexMap: Record<number, number> }>
+  >({});
 
   const form = useForm<FormResponses>({
     initialValues: {},
@@ -75,6 +88,7 @@ export default function FormSubmissionTest() {
           const data = docSnap.data() as FormData;
           setFormData(data);
 
+          // Initialize form values
           const initialValues = data.pages
             .flatMap((page) => page.elements)
             .reduce((acc: FormResponses, question) => {
@@ -86,6 +100,7 @@ export default function FormSubmissionTest() {
             }, {} as FormResponses);
           form.setValues(initialValues);
 
+          // Initialize otherSelected
           const otherSelectedInit = data.pages
             .flatMap((page) => page.elements)
             .reduce((acc, question) => {
@@ -95,6 +110,32 @@ export default function FormSubmissionTest() {
               return acc;
             }, {} as Record<string, boolean>);
           setOtherSelected(otherSelectedInit);
+
+          // Shuffle options for quiz mode
+          if (data.isQuiz) {
+            const shuffled = data.pages
+              .flatMap((page) => page.elements)
+              .reduce((acc, question) => {
+                if (
+                  (question.type === "multiple_choice" ||
+                    question.type === "checkbox") &&
+                  question.options &&
+                  Array.isArray(question.options)
+                ) {
+                  const shuffledOptions = shuffleArray(question.options);
+                  const indexMap: Record<number, number> = {};
+                  question.options.forEach((opt, originalIndex) => {
+                    const shuffledIndex = shuffledOptions.indexOf(opt);
+                    if (shuffledIndex >= 0) {
+                      indexMap[shuffledIndex] = originalIndex;
+                    }
+                  });
+                  acc[question.id] = { options: shuffledOptions, indexMap };
+                }
+                return acc;
+              }, {} as Record<string, { options: string[]; indexMap: Record<number, number> }>);
+            setShuffledOptions(shuffled);
+          }
         }
       } catch (error) {
         console.error("Lỗi khi tải form từ Firestore:", error);
@@ -141,37 +182,50 @@ export default function FormSubmissionTest() {
           }
 
           // Scoring logic
-          if (q.correctAnswers && q.correctAnswers.length > 0) {
+          if (
+            q.correctAnswers &&
+            q.correctAnswers.length > 0 &&
+            formData.isQuiz
+          ) {
             const questionScore = q.score ?? 1;
             totalPossibleScore += questionScore;
 
             if (q.type === "multiple_choice" && typeof answer === "string") {
-              // Single correct answer: check if answer matches options[correctAnswers[0]]
-              if (
-                q.options &&
-                q.correctAnswers[0] !== undefined &&
-                answer === q.options[q.correctAnswers[0]]
-              ) {
-                isCorrect = true;
-                userScore += questionScore;
+              const shuffledData = shuffledOptions[q.id];
+              if (shuffledData && q.options) {
+                const selectedIndex = shuffledData.options.indexOf(answer);
+                const originalIndex =
+                  selectedIndex >= 0
+                    ? shuffledData.indexMap[selectedIndex]
+                    : -1;
+                if (
+                  q.correctAnswers[0] !== undefined &&
+                  originalIndex === q.correctAnswers[0]
+                ) {
+                  isCorrect = true;
+                  userScore += questionScore;
+                }
               }
             } else if (q.type === "checkbox" && Array.isArray(answer)) {
-              // Multiple correct answers: check if answer exactly matches all correct options
-              if (q.options) {
-                const correctOptions = q.correctAnswers
-                  .map((idx) => q.options![idx])
+              if (q.options && shuffledOptions[q.id]) {
+                const shuffledData = shuffledOptions[q.id];
+                const originalAnswerIndices = answer
+                  .map((ans) => shuffledData.options.indexOf(ans))
+                  .filter((idx) => idx >= 0)
+                  .map((idx) => shuffledData.indexMap[idx])
                   .sort();
-                const sortedAnswer = [...answer].sort();
+                const correctIndices = q.correctAnswers.sort();
                 if (
-                  correctOptions.length === sortedAnswer.length &&
-                  correctOptions.every((opt, i) => opt === sortedAnswer[i])
+                  correctIndices.length === originalAnswerIndices.length &&
+                  correctIndices.every(
+                    (opt, i) => opt === originalAnswerIndices[i]
+                  )
                 ) {
                   isCorrect = true;
                   userScore += questionScore;
                 }
               }
             }
-            // Other types (short_text, rating, date) not scored unless specified
           }
 
           return {
@@ -267,7 +321,10 @@ export default function FormSubmissionTest() {
                         }}
                       >
                         <Stack>
-                          {q.options.map((opt, idx) => (
+                          {(formData.isQuiz && shuffledOptions[q.id]?.options
+                            ? shuffledOptions[q.id].options
+                            : q.options
+                          ).map((opt, idx) => (
                             <Radio
                               key={idx}
                               value={opt}
@@ -291,7 +348,10 @@ export default function FormSubmissionTest() {
                     {q.type === "checkbox" && q.options && (
                       <Checkbox.Group {...form.getInputProps(q.id)}>
                         <Stack>
-                          {q.options.map((opt, idx) => (
+                          {(formData.isQuiz && shuffledOptions[q.id]?.options
+                            ? shuffledOptions[q.id].options
+                            : q.options
+                          ).map((opt, idx) => (
                             <Checkbox
                               key={idx}
                               value={opt}

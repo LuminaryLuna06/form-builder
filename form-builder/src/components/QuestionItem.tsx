@@ -70,11 +70,11 @@ export default function QuestionItem({
   dragHandleProps,
   form,
 }: QuestionItemProps) {
-  const [isActive, setIsActive] = useState(true);
+  const [isActive, setIsActive] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [localQuestion, setLocalQuestion] = useState(question);
   const [localError, setLocalError] = useState<string | null>(null);
-  const ref = useClickOutside(() => setIsActive(true));
+  const ref = useClickOutside(() => setIsActive(false));
 
   useEffect(() => {
     setLocalQuestion(question);
@@ -145,6 +145,7 @@ export default function QuestionItem({
             "border-color 0.3s ease-in-out, max-height 0.3s ease-in-out",
           maxHeight: isActive ? "1000px" : "200px",
           overflow: "hidden",
+          backgroundColor: "#242424"
         }}
       >
         <Stack>
@@ -217,11 +218,12 @@ export default function QuestionItem({
           {(localQuestion.type === "multiple_choice" ||
             localQuestion.type === "checkbox") && (
             <Stack>
-              {localQuestion.options?.map((option, idx) => (
+              {localQuestion.options?.map((_, idx) => (
                 <Group key={idx} align="center">
                   {localQuestion.type === "checkbox" ? (
                     <Checkbox
                       checked={localQuestion.correctAnswers?.includes(idx)}
+                      disabled={!localQuestion.isScored}
                       onChange={(e) => {
                         const checked = e.currentTarget.checked;
                         const current = localQuestion.correctAnswers || [];
@@ -235,6 +237,7 @@ export default function QuestionItem({
                     />
                   ) : (
                     <Radio
+                      disabled={!localQuestion.isScored}
                       checked={localQuestion.correctAnswers?.[0] === idx}
                       onChange={() => {
                         const updated = [idx];
@@ -261,6 +264,7 @@ export default function QuestionItem({
                   {localQuestion.type === "checkbox" ? (
                     <Checkbox
                       checked={localQuestion.correctAnswers?.includes(-1)}
+                      disabled={!localQuestion.isScored}
                       onChange={(e) => {
                         const checked = e.currentTarget.checked;
                         const current = localQuestion.correctAnswers || [];
@@ -275,6 +279,7 @@ export default function QuestionItem({
                   ) : (
                     <Radio
                       checked={localQuestion.correctAnswers?.[0] === -1}
+                      disabled={!localQuestion.isScored}
                       onChange={() => {
                         const updated = [-1];
                         if (validateCorrectAnswers(updated)) {

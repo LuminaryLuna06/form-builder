@@ -1,5 +1,4 @@
 import {
-  Table,
   Text,
   Title,
   Container,
@@ -13,16 +12,21 @@ import {
   Button,
   LoadingOverlay,
   SimpleGrid,
-  Center,
 } from "@mantine/core";
 import { useCollection, useDocument } from "react-firebase-hooks/firestore";
-import { collection, query, orderBy, doc } from "firebase/firestore";
+import { collection, query, orderBy, doc, Timestamp } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { useParams } from "react-router-dom";
 import { IconDownload } from "@tabler/icons-react";
 import { useMemo, useState } from "react";
 import { PieChart, DonutChart } from "@mantine/charts";
 import { DefaultMantineColor } from "@mantine/core";
+import {
+  MantineReactTable,
+  MRT_Cell,
+  useMantineReactTable,
+  type MRT_ColumnDef,
+} from "mantine-react-table";
 
 export default function FormResponses() {
   const { id: formId } = useParams();
@@ -52,6 +56,19 @@ export default function FormResponses() {
     return map;
   }, [formData]);
 
+  const mantineColorNames: DefaultMantineColor[] = [
+    "blue.6",
+    "teal.6",
+    "cyan.6",
+    "indigo.6",
+    "violet.6",
+    "grape.6",
+    "green.6",
+    "lime.6",
+    "orange.6",
+    "red.6",
+  ];
+
   const { questionStats, responseCount } = useMemo(() => {
     if (!snapshot || !questionMap)
       return { questionStats: {}, responseCount: 0, latestResponses: [] };
@@ -74,14 +91,13 @@ export default function FormResponses() {
           };
         }
         if (Array.isArray(answer)) {
-          stats[qKey].answers.push(...answer); // Spread array items into answers
+          stats[qKey].answers.push(...answer);
           answer.forEach((item) => {
             if (typeof item === "number") stats[qKey].numericAnswers.push(item);
             if (typeof item === "string" && item.length < 50)
               stats[qKey].options.add(item);
           });
         } else {
-          // Handle single value answers (original logic)
           stats[qKey].answers.push(answer);
           if (typeof answer === "number")
             stats[qKey].numericAnswers.push(answer);
@@ -104,8 +120,8 @@ export default function FormResponses() {
       }
 
       if (question.options.size > 0 && question.options.size < 10) {
-        question.optionDistribution = Array.from(question.options)?.map(
-          (option) => ({
+        question.optionDistribution = Array.from(question.options).map(
+          (option, index) => ({
             name: option,
             value: question.answers.filter((a: any) =>
               Array.isArray(a) ? a.includes(option) : a === option
@@ -116,6 +132,7 @@ export default function FormResponses() {
               ).length /
                 question.totalAnswers) *
               100,
+            color: mantineColorNames[index % mantineColorNames.length],
           })
         );
       }
@@ -139,38 +156,106 @@ export default function FormResponses() {
   );
 
   if (ratingQuestionKey) {
-    const counts = Array(10).fill(0); // Assuming ratings are 1-10
+    const counts = Array(11).fill(0); // Assuming ratings are 0-10
 
     snapshot?.docs.forEach((doc) => {
       const response = doc.data();
       const rating = response.responses?.[ratingQuestionKey];
-      if (rating >= 1 && rating <= 10) {
-        counts[rating - 1]++;
+      if (rating >= 0 && rating <= 10) {
+        counts[rating]++;
       }
     });
-    const mantineColorNames: DefaultMantineColor[] = [
-      "blue.6",
-      "teal.6",
-      "cyan.6",
-      "indigo.6",
-      "violet.6",
-      "grape.6",
-      "green.6",
-      "lime.6",
-      "orange.6",
-      "red.6",
-    ];
 
     ratingData.title = questionStats[ratingQuestionKey].title;
     ratingData.data = counts
       .map((count, index) => ({
-        name: `${index + 1} ★`,
+        name: `${index} ★`,
         value: count,
-        color: mantineColorNames[index % mantineColorNames.length], // Use valid Mantine color names
+        color: mantineColorNames[index % mantineColorNames.length],
       }))
       .filter((item) => item.value > 0);
   }
-  console.log(ratingData.data);
+  const columns = useMemo<MRT_ColumnDef<any>[]>(() => {
+    if (!questionMap) return [];
+
+    return [
+      {
+        accessorKey: "createdAt",
+        header: "Submission Time",
+        Cell: ({ cell }) => {
+          const value = cell.getValue() as Timestamp;
+          return (
+            <Text>
+              {value?.toDate().toLocaleDateString("en-GB", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })}
+            </Text>
+          );
+        },
+        size: 180,
+      },
+      ...Object.keys(questionStats)
+        .sort((a, b) => parseInt(a.substring(1)) - parseInt(b.substring(1)))
+        .map((qKey) => ({
+          accessorKey: `responses.${qKey}`,
+          header: questionStats[qKey].title,
+          Cell: ({ cell }: { cell: MRT_Cell<any> }) => {
+            const value = cell.getValue();
+            const questionType = questionStats[qKey].type;
+
+            if (value === undefined || value === null) return "-";
+
+            // Custom rendering based on question type
+            if (questionType === "date") {
+              return (
+                <Text>
+                  {(value as Timestamp)?.toDate?.()?.toLocaleDateString() ||
+                    "Invalid date"}
+                </Text>
+              );
+            } else if (Array.isArray(value)) {
+              return <Text>{value.join(", ")}</Text>;
+            } else if (typeof value === "object") {
+              return <Text>{JSON.stringify(value)}</Text>;
+            } else if (typeof value === "string" && value.length > 50) {
+              return <Text lineClamp={1}>{value.substring(0, 50)}...</Text>;
+            } else {
+              return <Text>{String(value)}</Text>;
+            }
+          },
+          size: 200,
+        })),
+    ];
+  }, [questionMap, questionStats]);
+
+  const tableData = useMemo(
+    () =>
+      snapshot?.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) || [],
+    [snapshot]
+  );
+
+  const table = useMantineReactTable({
+    columns,
+    data: tableData,
+    initialState: {
+      pagination: { pageSize: 10, pageIndex: 0 },
+      density: "xs",
+    },
+    enableColumnResizing: true,
+    enableColumnOrdering: true,
+    enableRowSelection: false,
+    enableFullScreenToggle: false,
+    enableTopToolbar: true,
+    mantinePaperProps: {
+      shadow: "sm",
+      withBorder: true,
+    },
+  });
   const exportToCSV = () => {
     if (!snapshot || snapshot.empty || !questionMap) {
       alert("No responses to export");
@@ -221,15 +306,14 @@ export default function FormResponses() {
     link.click();
     document.body.removeChild(link);
   };
+
   const downloadResponsesTxt = () => {
     if (!snapshot || !formData) return;
 
-    // Create the header section
     let txtContent = `Form Title: ${formData.title}\n`;
     txtContent += `Total Responses: ${snapshot.docs.length}\n\n`;
     txtContent += "=== ALL RESPONSES ===\n\n";
 
-    // Process each response
     snapshot.docs.forEach((doc, index) => {
       const responseData = doc.data();
       txtContent += `Response #${index + 1}\n`;
@@ -237,14 +321,12 @@ export default function FormResponses() {
         responseData.createdAt?.seconds * 1000
       ).toLocaleString()}\n`;
 
-      // Add each question and answer
       Object.entries(responseData.responses).forEach(([qKey, answer]) => {
         const questionMeta = questionMap[qKey];
         if (!questionMeta) return;
 
         txtContent += `Q: ${questionMeta.title}\n`;
 
-        // Format different answer types appropriately
         if (Array.isArray(answer)) {
           txtContent += `A: ${answer.join(", ")}\n`;
         } else if (typeof answer === "object" && answer !== null) {
@@ -254,10 +336,9 @@ export default function FormResponses() {
         }
       });
 
-      txtContent += "\n"; // Add space between responses
+      txtContent += "\n";
     });
 
-    // Add statistics section
     txtContent += "\n=== STATISTICS ===\n\n";
     Object.entries(questionStats).forEach(([_, stat]) => {
       txtContent += `Question: ${stat.title} (${stat.type})\n`;
@@ -280,7 +361,6 @@ export default function FormResponses() {
       txtContent += "\n";
     });
 
-    // Create and trigger download
     const blob = new Blob([txtContent], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -294,6 +374,7 @@ export default function FormResponses() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
+
   if (loading || formLoading)
     return (
       <Box pos="relative" h="100vh">
@@ -310,7 +391,7 @@ export default function FormResponses() {
   if (!responseCount)
     return (
       <Container>
-        <Text ta={Center} size="xl" fw={500}>
+        <Text ta="center" size="xl" fw={500}>
           No responses yet
         </Text>
       </Container>
@@ -348,74 +429,13 @@ export default function FormResponses() {
         <Badge size="lg">{responseCount}</Badge>
       </Paper>
 
-      {/* Full Responses Table - Only shown when toggled */}
       {showAllResponses && (
-        <Paper withBorder p="md" mt="xl" mb="xl">
+        <Box mt="xl" mb="xl">
           <Title order={4} mb="md">
             All Responses ({responseCount})
           </Title>
-          <Table.ScrollContainer minWidth={800}>
-            <Table striped highlightOnHover>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Submission Time</Table.Th>
-                  {Object.keys(questionStats)
-                    .sort(
-                      (a, b) =>
-                        parseInt(a.substring(1)) - parseInt(b.substring(1))
-                    )
-                    .map((qKey) => (
-                      <Table.Th key={qKey}>
-                        {questionStats[qKey].title}
-                      </Table.Th>
-                    ))}
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {snapshot?.docs.map((doc) => {
-                  const response = doc.data();
-                  return (
-                    <Table.Tr key={doc.id}>
-                      <Table.Td>
-                        {response.createdAt?.toDate().toLocaleString()}
-                      </Table.Td>
-                      {Object.keys(questionStats)
-                        .sort(
-                          (a, b) =>
-                            parseInt(a.substring(1)) - parseInt(b.substring(1))
-                        )
-                        .map((qKey) => {
-                          const value = response.responses?.[qKey];
-
-                          let displayValue = "-";
-                          if (value !== undefined && value !== null) {
-                            if (questionStats[qKey].type === "date") {
-                              displayValue = new Date(
-                                value
-                              ).toLocaleDateString();
-                            } else if (typeof value === "string") {
-                              displayValue =
-                                value.length > 50
-                                  ? `${value.substring(0, 50)}...`
-                                  : value;
-                            } else {
-                              displayValue = JSON.stringify(value);
-                            }
-                          }
-
-                          return (
-                            <Table.Td key={qKey}>
-                              <Text lineClamp={1}>{displayValue}</Text>
-                            </Table.Td>
-                          );
-                        })}
-                    </Table.Tr>
-                  );
-                })}
-              </Table.Tbody>
-            </Table>
-          </Table.ScrollContainer>
-        </Paper>
+          <MantineReactTable table={table} />
+        </Box>
       )}
 
       <Stack gap="xl">
@@ -429,8 +449,6 @@ export default function FormResponses() {
                 <Text size="sm" mb="md">
                   Total Responses: {stats.answers.length}
                 </Text>
-
-                {/* Show word cloud or frequent terms if implemented */}
                 {stats.frequentTerms && stats.frequentTerms.length > 0 && (
                   <Box mb="md">
                     <Text size="sm" fw={500}>
@@ -445,8 +463,6 @@ export default function FormResponses() {
                     </Group>
                   </Box>
                 )}
-
-                {/* Sample of responses */}
                 <Box>
                   <Text size="sm" fw={500} mb="xs">
                     Sample Responses:
@@ -476,8 +492,6 @@ export default function FormResponses() {
                 <Text size="sm" mb="md">
                   Total Responses: {stats.answers.length}
                 </Text>
-
-                {/* Show word cloud or frequent terms if implemented */}
                 {stats.frequentTerms && stats.frequentTerms.length > 0 && (
                   <Box mb="md">
                     <Text size="sm" fw={500}>
@@ -492,8 +506,6 @@ export default function FormResponses() {
                     </Group>
                   </Box>
                 )}
-
-                {/* Sample of responses */}
                 <Box>
                   <Text size="sm" fw={500} mb="xs">
                     Sample Responses:
@@ -567,6 +579,7 @@ export default function FormResponses() {
                     tooltipDataSource="segment"
                     mx="auto"
                     size={250}
+                    strokeWidth={0.6}
                   />
                 </SimpleGrid>
               </>
@@ -598,6 +611,7 @@ export default function FormResponses() {
                     tooltipDataSource="segment"
                     mx="auto"
                     size={250}
+                    strokeWidth={0.6}
                   />
                 </SimpleGrid>
               </>
