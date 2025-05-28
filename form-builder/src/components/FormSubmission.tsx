@@ -239,7 +239,7 @@ export default function FormSubmission() {
       // Calculate totalScore as a percentage
       const totalScore =
         totalPossibleScore > 0
-          ? (userScore / totalPossibleScore).toFixed(2)
+          ? parseFloat((userScore / totalPossibleScore).toFixed(2))
           : 0;
 
       const surveyResults = orderedResponses.reduce(

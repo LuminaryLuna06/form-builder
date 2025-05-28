@@ -1,3 +1,5 @@
+import { Timestamp } from "firebase/firestore";
+
 export type QuestionType =
   | "short_text"
   | "multiple_choice"
@@ -39,3 +41,11 @@ export type FormResponses = Record<
   string,
   string | string[] | number | Date | null
 >;
+
+export type ResponseData = {
+  id: string;
+  createdAt: Timestamp;
+  responses: FormResponses;
+  totalScore: number;
+  formTitle: string;
+};
