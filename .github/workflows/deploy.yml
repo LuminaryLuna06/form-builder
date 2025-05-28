@@ -37,7 +37,6 @@ jobs:
           cache: "npm"
 
       - name: Create .env File
-        working-directory: ./form-builder
         run: |
           echo "VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY }}" >> .env
           echo "VITE_FIREBASE_AUTH_DOMAIN=${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}" >> .env
@@ -48,10 +47,8 @@ jobs:
           echo "VITE_MEASUREMENT_ID=${{ secrets.VITE_MEASUREMENT_ID }}" >> .env
 
       - name: Install dependencies
-        working-directory: ./form-builder
         run: npm ci
       - name: Build
-        working-directory: ./form-builder
         run: npm run build
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -59,7 +56,7 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           # Upload dist folder
-          path: "./form-builder/dist"
+          path: "./dist"
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
