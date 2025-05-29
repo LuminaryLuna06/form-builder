@@ -58,6 +58,14 @@ const shuffleArray = (array: string[]): string[] => {
   }
   return newArray;
 };
+const shuffleQuestions = (questions: any[]) => {
+  const shuffled = [...questions];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+};
 
 export default function FormSubmission() {
   const navigate = useNavigate();
@@ -70,6 +78,7 @@ export default function FormSubmission() {
   const [shuffledOptions, setShuffledOptions] = useState<
     Record<string, { options: string[]; indexMap: Record<number, number> }>
   >({});
+  const [shuffledPages, setShuffledPages] = useState<FormData["pages"]>([]);
 
   const form = useForm<FormResponses>({
     initialValues: {},
@@ -110,6 +119,14 @@ export default function FormSubmission() {
               return acc;
             }, {} as Record<string, boolean>);
           setOtherSelected(otherSelectedInit);
+
+          const processedPages = data.pages.map((page) => ({
+            ...page,
+            elements: data.isQuiz
+              ? shuffleQuestions(page.elements)
+              : page.elements,
+          }));
+          setShuffledPages(processedPages);
 
           // Shuffle options for quiz mode
           if (data.isQuiz) {
@@ -279,7 +296,7 @@ export default function FormSubmission() {
       </Title>
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack>
-          {formData.pages.map((page, pageIndex) => (
+          {shuffledPages.map((page, pageIndex) => (
             <Stack key={page.name} mb="xl">
               <Title order={3}>{page.title || `Trang ${pageIndex + 1}`}</Title>
               <Group mt="xs">
