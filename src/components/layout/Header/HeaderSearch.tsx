@@ -3,12 +3,10 @@ import {
   ActionIcon,
   Autocomplete,
   Burger,
-  Button,
   Group,
   useMantineColorScheme,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-// import { MantineLogo } from "@mantinex/mantine-logo";
 import classes from "./HeaderSearch.module.css";
 import { Link } from "react-router-dom";
 import { IconSun, IconMoon } from "@tabler/icons-react";
@@ -40,7 +38,6 @@ export function HeaderSearch() {
       <div className={classes.inner}>
         <Group>
           <Burger opened={opened} onClick={toggle} size="sm" hiddenFrom="sm" />
-          {/* <MantineLogo size={28} /> */}
           <Link to="/" className={classes.logoText}>
             MSFormFake
           </Link>

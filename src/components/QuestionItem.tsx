@@ -16,6 +16,8 @@ import {
   Checkbox,
   Radio,
   NumberInput,
+  useMantineColorScheme,
+  useMantineTheme,
 } from "@mantine/core";
 import { Question } from "../types/form";
 import { useState, useEffect } from "react";
@@ -74,7 +76,9 @@ export default function QuestionItem({
   const [isOpen, setIsOpen] = useState(false);
   const [localQuestion, setLocalQuestion] = useState(question);
   const [localError, setLocalError] = useState<string | null>(null);
+  const { colorScheme } = useMantineColorScheme();
   const ref = useClickOutside(() => setIsActive(false));
+  const theme = useMantineTheme();
 
   useEffect(() => {
     setLocalQuestion(question);
@@ -148,20 +152,21 @@ export default function QuestionItem({
           display: "flex",
           flexDirection: "row",
           gap: "16px",
-          
+          backgroundColor:
+            colorScheme === "dark" ? theme.colors.dark[7] : "#fff",
         }}
       >
         <Group align="center">
-            <ActionIcon
-              variant="light"
-              color="gray"
-              {...dragHandleProps}
-              title="Kéo để sắp xếp"
-              style={{ cursor: "grab" }}
-            >
-              <IconGripVertical size={16} />
-            </ActionIcon>
-          </Group>
+          <ActionIcon
+            variant="light"
+            color="gray"
+            {...dragHandleProps}
+            title="Kéo để sắp xếp"
+            style={{ cursor: "grab" }}
+          >
+            <IconGripVertical size={16} />
+          </ActionIcon>
+        </Group>
         <Stack style={{ flex: 1, width: "100%" }}>
           {isActive && (
             <Group style={{ justifyContent: "flex-end" }}>

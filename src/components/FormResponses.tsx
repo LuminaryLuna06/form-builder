@@ -85,10 +85,11 @@ export default function FormResponses() {
         Timestamp: original.createdAt.toDate().toISOString(),
       };
 
-      // Add question columns
+      // Add question columns (using question title as key)
       questionKeys.forEach((qKey) => {
+        const questionTitle = questionMap[qKey]?.title || qKey; // Fallback to qKey if title missing
         const answer = original.responses[qKey];
-        responseData[qKey] = Array.isArray(answer)
+        responseData[questionTitle] = Array.isArray(answer)
           ? answer.join(", ")
           : answer instanceof Timestamp
           ? answer.toDate().toLocaleDateString("en-GB")
@@ -97,7 +98,7 @@ export default function FormResponses() {
 
       // Add Score column if form is a quiz
       if (formData?.isQuiz) {
-        responseData.Score =
+        responseData["Score"] =
           typeof original.totalScore === "number"
             ? `${(original.totalScore * 100).toFixed(2)}%`
             : "";
@@ -120,10 +121,11 @@ export default function FormResponses() {
         Timestamp: item.createdAt.toDate().toISOString(),
       };
 
-      // Add question columns
+      // Add question columns (using question title as key)
       questionKeys.forEach((qKey) => {
+        const questionTitle = questionMap[qKey]?.title || qKey; // Fallback to qKey if title missing
         const answer = item.responses[qKey];
-        responseData[qKey] = Array.isArray(answer)
+        responseData[questionTitle] = Array.isArray(answer)
           ? answer.join(", ")
           : answer instanceof Timestamp
           ? answer.toDate().toLocaleDateString("en-GB")
@@ -132,7 +134,7 @@ export default function FormResponses() {
 
       // Add Score column if form is a quiz
       if (formData?.isQuiz) {
-        responseData.Score =
+        responseData["Score"] =
           typeof item.totalScore === "number"
             ? `${(item.totalScore * 100).toFixed(2)}%`
             : "";
@@ -532,124 +534,6 @@ export default function FormResponses() {
       </Box>
     ),
   });
-  // const exportToCSV = () => {
-  //   if (!snapshot || snapshot.empty || !questionMap) {
-  //     alert("No responses to export");
-  //     return;
-  //   }
-
-  //   const questionKeys = Object.keys(questionMap);
-
-  //   const headers = [
-  //     "Timestamp",
-  //     ...questionKeys.map(
-  //       (qKey) =>
-  //         `${qKey}: ${questionMap[qKey]?.title || "Unknown"} (${
-  //           questionMap[qKey]?.type || "-"
-  //         })`
-  //     ),
-  //     "Score",
-  //   ];
-
-  //   const rows = snapshot.docs.map((doc) => {
-  //     const response = doc.data();
-  //     return [
-  //       response.createdAt?.toDate().toISOString(),
-  //       ...questionKeys.map((qKey) => {
-  //         const answer = response.responses[qKey];
-  //         if (answer === null || answer === undefined) return "";
-  //         if (typeof answer === "string") {
-  //           const escaped = answer.replace(/"/g, '""');
-  //           return answer.includes(",") ? `"${escaped}"` : escaped;
-  //         }
-  //         return JSON.stringify(answer);
-  //       }),
-  //       `${response.totalScore * 100}%`,
-  //     ];
-  //   });
-
-  //   const csvContent = [
-  //     headers.join(";"),
-  //     ...rows.map((row) => row.join(";")),
-  //   ].join("\n");
-
-  //   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-  //   const url = URL.createObjectURL(blob);
-  //   const link = document.createElement("a");
-  //   link.href = url;
-  //   link.download = `form-responses-${formId}.csv`;
-  //   document.body.appendChild(link);
-  //   link.click();
-  //   document.body.removeChild(link);
-  // };
-
-  // const downloadResponsesTxt = () => {
-  //   if (!snapshot || !formData) return;
-
-  //   let txtContent = `Form Title: ${formData.title}\n`;
-  //   txtContent += `Total Responses: ${snapshot.docs.length}\n\n`;
-  //   txtContent += "=== ALL RESPONSES ===\n\n";
-
-  //   snapshot.docs.forEach((doc, index) => {
-  //     const responseData = doc.data();
-  //     txtContent += `Response #${index + 1}\n`;
-  //     txtContent += `Submitted: ${new Date(
-  //       responseData.createdAt?.seconds * 1000
-  //     ).toLocaleString()}\n`;
-
-  //     Object.entries(responseData.responses).forEach(([qKey, answer]) => {
-  //       const questionMeta = questionMap[qKey];
-  //       if (!questionMeta) return;
-
-  //       txtContent += `Q: ${questionMeta.title}\n`;
-
-  //       if (Array.isArray(answer)) {
-  //         txtContent += `A: ${answer.join(", ")}\n`;
-  //       } else if (typeof answer === "object" && answer !== null) {
-  //         txtContent += `A: ${JSON.stringify(answer)}\n`;
-  //       } else {
-  //         txtContent += `A: ${answer}\n`;
-  //       }
-  //     });
-
-  //     txtContent += "\n";
-  //   });
-
-  //   txtContent += "\n=== STATISTICS ===\n\n";
-  //   Object.entries(questionStats).forEach(([_, stat]) => {
-  //     txtContent += `Question: ${stat.title} (${stat.type})\n`;
-  //     txtContent += `Total answers: ${stat.totalAnswers}\n`;
-
-  //     if (stat.average !== undefined) {
-  //       txtContent += `Average: ${stat.average.toFixed(2)}\n`;
-  //       txtContent += `Range: ${stat.min} - ${stat.max}\n`;
-  //     }
-
-  //     if (stat.optionDistribution) {
-  //       txtContent += "Options:\n";
-  //       stat.optionDistribution.forEach((option: any) => {
-  //         txtContent += `- ${option.name}: ${
-  //           option.value
-  //         } (${option.percentage.toFixed(1)}%)\n`;
-  //       });
-  //     }
-
-  //     txtContent += "\n";
-  //   });
-
-  //   const blob = new Blob([txtContent], { type: "text/plain" });
-  //   const url = URL.createObjectURL(blob);
-  //   const a = document.createElement("a");
-  //   a.href = url;
-  //   a.download = `FormResponses_${formData.title.replace(
-  //     /[^a-z0-9]/gi,
-  //     "_"
-  //   )}.txt`;
-  //   document.body.appendChild(a);
-  //   a.click();
-  //   document.body.removeChild(a);
-  //   URL.revokeObjectURL(url);
-  // };
 
   if (loading || formLoading)
     return (
@@ -677,21 +561,6 @@ export default function FormResponses() {
     <Container size="lg" py="xl">
       <Group justify="space-between" mb="xl">
         <Title order={2}>Form Responses Analysis</Title>
-        {/* <Group>
-          <button
-            onClick={downloadResponsesTxt}
-            disabled={!snapshot || snapshot.docs.length === 0}
-            className="download-btn"
-          >
-            Download All Responses as TXT
-          </button>
-          <Button
-            leftSection={<IconDownload size={16} />}
-            onClick={exportToCSV}
-          >
-            Export to CSV
-          </Button>
-        </Group> */}
       </Group>
 
       <Paper withBorder p="md" mb="xl" style={{ display: "flex", gap: 10 }}>

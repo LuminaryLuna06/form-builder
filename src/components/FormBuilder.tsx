@@ -13,8 +13,6 @@ import {
   Tooltip,
   ActionIcon,
   rem,
-  useComputedColorScheme,
-  useMantineTheme,
 } from "@mantine/core";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { useState, useEffect } from "react";
@@ -57,10 +55,6 @@ const formSchema = yup.object().shape({
 });
 
 export default function FormBuilder() {
-  const theme = useMantineTheme();
-  const computedColorScheme = useComputedColorScheme("light", {
-    getInitialValueInEffect: true,
-  });
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -309,13 +303,7 @@ export default function FormBuilder() {
             }}
           >
             {form.values.pages.map((page, pageIndex) => (
-              <Paper
-                key={page.name}
-                shadow="xs"
-                p="md"
-                radius="md"
-                withBorder
-              >
+              <Paper key={page.name} shadow="xs" p="md" radius="md" withBorder>
                 <Group justify="space-between" align="center">
                   <Title order={4}>Trang {pageIndex + 1}</Title>
                   {form.values.pages.length > 1 && (
@@ -507,7 +495,4 @@ export default function FormBuilder() {
       </Modal>
     </>
   );
-}
-function useMantineColorScheme(): { colorScheme: any } {
-  throw new Error("Function not implemented.");
 }
