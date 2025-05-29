@@ -19,6 +19,7 @@
     "@mantinex/mantine-logo": "^1.1.0",
     "@tabler/icons-react": "^3.31.0",
     "dayjs": "^1.11.13",
+    "export-to-csv": "^1.4.0",
     "firebase": "^11.6.1",
     "mantine-form-yup-resolver": "^2.0.0",
     "mantine-react-table": "^2.0.0-beta.9",

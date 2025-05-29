@@ -145,11 +145,13 @@ export default function QuestionItem({
             "border-color 0.3s ease-in-out, max-height 0.3s ease-in-out",
           maxHeight: isActive ? "1000px" : "200px",
           overflow: "hidden",
-          backgroundColor: "#242424"
+          display: "flex",
+          flexDirection: "row",
+          gap: "16px",
+          
         }}
       >
-        <Stack>
-          <Group align="center">
+        <Group align="center">
             <ActionIcon
               variant="light"
               color="gray"
@@ -160,6 +162,7 @@ export default function QuestionItem({
               <IconGripVertical size={16} />
             </ActionIcon>
           </Group>
+        <Stack style={{ flex: 1, width: "100%" }}>
           {isActive && (
             <Group style={{ justifyContent: "flex-end" }}>
               <ActionIcon

@@ -10,6 +10,7 @@ import { MantineProvider } from "@mantine/core";
 
 import App from "./App.tsx";
 
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <MantineProvider defaultColorScheme="dark">

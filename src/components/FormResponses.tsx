@@ -19,17 +19,19 @@ import { collection, query, orderBy, doc } from "firebase/firestore";
 import { Timestamp } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { useParams } from "react-router-dom";
-import { IconDownload } from "@tabler/icons-react";
 import { useMemo } from "react";
 import { PieChart, DonutChart } from "@mantine/charts";
 import { DefaultMantineColor } from "@mantine/core";
 import {
   MantineReactTable,
   MRT_Cell,
+  MRT_Row,
   useMantineReactTable,
   type MRT_ColumnDef,
 } from "mantine-react-table";
+import { mkConfig, generateCsv, download } from "export-to-csv";
 import { ResponseData, FormData, QuestionType } from "../types/form";
+import { IconDownload } from "@tabler/icons-react";
 
 interface QuestionStats {
   title: string;
@@ -55,8 +57,6 @@ const getFilterVariant = (
   switch (type) {
     case "rating":
       return "range";
-    // case "checkbox":
-    //   return "multi-select";
     case "multiple_choice":
       return "select";
     default:
@@ -64,9 +64,86 @@ const getFilterVariant = (
   }
 };
 
+const csvConfig = mkConfig({
+  fieldSeparator: ";",
+  decimalSeparator: ".",
+  useKeysAsHeaders: true,
+});
+
 export default function FormResponses() {
   const { id: formId } = useParams();
-  // const [showAllResponses, setShowAllResponses] = useState(false);
+
+  // Modified export functions for FormResponses.tsx
+  const handleExportRows = (rows: MRT_Row<ResponseData>[]) => {
+    const questionKeys = Object.keys(questionMap).sort(
+      (a, b) => parseInt(a.substring(1)) - parseInt(b.substring(1))
+    );
+
+    const rowData = rows.map((row) => {
+      const original = row.original;
+      const responseData: Record<string, any> = {
+        Timestamp: original.createdAt.toDate().toISOString(),
+      };
+
+      // Add question columns
+      questionKeys.forEach((qKey) => {
+        const answer = original.responses[qKey];
+        responseData[qKey] = Array.isArray(answer)
+          ? answer.join(", ")
+          : answer instanceof Timestamp
+          ? answer.toDate().toLocaleDateString("en-GB")
+          : answer ?? "";
+      });
+
+      // Add Score column if form is a quiz
+      if (formData?.isQuiz) {
+        responseData.Score =
+          typeof original.totalScore === "number"
+            ? `${(original.totalScore * 100).toFixed(2)}%`
+            : "";
+      }
+
+      return responseData;
+    });
+
+    const csv = generateCsv(csvConfig)(rowData);
+    download(csvConfig)(csv);
+  };
+
+  const handleExportData = () => {
+    const questionKeys = Object.keys(questionMap).sort(
+      (a, b) => parseInt(a.substring(1)) - parseInt(b.substring(1))
+    );
+
+    const transformedData = tableData.map((item) => {
+      const responseData: Record<string, any> = {
+        Timestamp: item.createdAt.toDate().toISOString(),
+      };
+
+      // Add question columns
+      questionKeys.forEach((qKey) => {
+        const answer = item.responses[qKey];
+        responseData[qKey] = Array.isArray(answer)
+          ? answer.join(", ")
+          : answer instanceof Timestamp
+          ? answer.toDate().toLocaleDateString("en-GB")
+          : answer ?? "";
+      });
+
+      // Add Score column if form is a quiz
+      if (formData?.isQuiz) {
+        responseData.Score =
+          typeof item.totalScore === "number"
+            ? `${(item.totalScore * 100).toFixed(2)}%`
+            : "";
+      }
+
+      return responseData;
+    });
+
+    const csv = generateCsv(csvConfig)(transformedData);
+    download(csvConfig)(csv);
+  };
 
   const [formSnapshot, formLoading, formError] = useDocument(
     doc(db, "forms", formId || "")
@@ -134,9 +211,7 @@ export default function FormResponses() {
           stats[qKey].answers.push(...answer);
           answer.forEach((item) => {
             if (typeof item === "number") stats[qKey].numericAnswers.push(item);
-            if (typeof item === "string")
-              //&& item.length <50
-              stats[qKey].options.add(item);
+            if (typeof item === "string") stats[qKey].options.add(item);
           });
         } else {
           stats[qKey].answers.push(answer);
@@ -385,11 +460,12 @@ export default function FormResponses() {
       pagination: { pageSize: 10, pageIndex: 0 },
       density: "xs",
     },
+    enableRowSelection: true,
     enableColumnResizing: true,
     enableColumnOrdering: true,
-    enableRowSelection: false,
     enableFullScreenToggle: false,
     enableTopToolbar: true,
+    columnFilterDisplayMode: "popover", // Use popover for filters
     mantinePaperProps: {
       shadow: "sm",
       withBorder: true,
@@ -404,125 +480,176 @@ export default function FormResponses() {
       withColumnBorders: true,
     },
     enableStickyHeader: true,
-  });
-  const exportToCSV = () => {
-    if (!snapshot || snapshot.empty || !questionMap) {
-      alert("No responses to export");
-      return;
-    }
-
-    const questionKeys = Object.keys(questionMap);
-
-    const headers = [
-      "Timestamp",
-      ...questionKeys.map(
-        (qKey) =>
-          `${qKey}: ${questionMap[qKey]?.title || "Unknown"} (${
-            questionMap[qKey]?.type || "-"
-          })`
-      ),
-      "Score",
-    ];
-
-    const rows = snapshot.docs.map((doc) => {
-      const response = doc.data();
-      return [
-        response.createdAt?.toDate().toISOString(),
-        ...questionKeys.map((qKey) => {
-          const answer = response.responses[qKey];
-          if (answer === null || answer === undefined) return "";
-          if (typeof answer === "string") {
-            const escaped = answer.replace(/"/g, '""');
-            return answer.includes(",") ? `"${escaped}"` : escaped;
+    renderTopToolbarCustomActions: ({ table }) => (
+      <Box
+        style={{
+          display: "flex",
+          gap: "16px",
+          padding: "8px",
+          flexWrap: "wrap",
+        }}
+      >
+        <Button
+          color="lightblue"
+          //export all data that is currently in the table (ignore pagination, sorting, filtering, etc.)
+          onClick={handleExportData}
+          leftSection={<IconDownload />}
+          variant="filled"
+        >
+          Export All Data
+        </Button>
+        <Button
+          disabled={table.getPrePaginationRowModel().rows.length === 0}
+          //export all rows, including from the next page, (still respects filtering and sorting)
+          onClick={() =>
+            handleExportRows(table.getPrePaginationRowModel().rows)
           }
-          return JSON.stringify(answer);
-        }),
-        `${response.totalScore * 100}%`,
-      ];
-    });
+          leftSection={<IconDownload />}
+          variant="filled"
+        >
+          Export All Rows
+        </Button>
+        <Button
+          disabled={table.getRowModel().rows.length === 0}
+          //export all rows as seen on the screen (respects pagination, sorting, filtering, etc.)
+          onClick={() => handleExportRows(table.getRowModel().rows)}
+          leftSection={<IconDownload />}
+          variant="filled"
+        >
+          Export Page Rows
+        </Button>
+        <Button
+          disabled={
+            !table.getIsSomeRowsSelected() && !table.getIsAllRowsSelected()
+          }
+          //only export selected rows
+          onClick={() => handleExportRows(table.getSelectedRowModel().rows)}
+          leftSection={<IconDownload />}
+          variant="filled"
+        >
+          Export Selected Rows
+        </Button>
+      </Box>
+    ),
+  });
+  // const exportToCSV = () => {
+  //   if (!snapshot || snapshot.empty || !questionMap) {
+  //     alert("No responses to export");
+  //     return;
+  //   }
 
-    const csvContent = [
-      headers.join(";"),
-      ...rows.map((row) => row.join(";")),
-    ].join("\n");
+  //   const questionKeys = Object.keys(questionMap);
 
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `form-responses-${formId}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  //   const headers = [
+  //     "Timestamp",
+  //     ...questionKeys.map(
+  //       (qKey) =>
+  //         `${qKey}: ${questionMap[qKey]?.title || "Unknown"} (${
+  //           questionMap[qKey]?.type || "-"
+  //         })`
+  //     ),
+  //     "Score",
+  //   ];
 
-  const downloadResponsesTxt = () => {
-    if (!snapshot || !formData) return;
+  //   const rows = snapshot.docs.map((doc) => {
+  //     const response = doc.data();
+  //     return [
+  //       response.createdAt?.toDate().toISOString(),
+  //       ...questionKeys.map((qKey) => {
+  //         const answer = response.responses[qKey];
+  //         if (answer === null || answer === undefined) return "";
+  //         if (typeof answer === "string") {
+  //           const escaped = answer.replace(/"/g, '""');
+  //           return answer.includes(",") ? `"${escaped}"` : escaped;
+  //         }
+  //         return JSON.stringify(answer);
+  //       }),
+  //       `${response.totalScore * 100}%`,
+  //     ];
+  //   });
 
-    let txtContent = `Form Title: ${formData.title}\n`;
-    txtContent += `Total Responses: ${snapshot.docs.length}\n\n`;
-    txtContent += "=== ALL RESPONSES ===\n\n";
+  //   const csvContent = [
+  //     headers.join(";"),
+  //     ...rows.map((row) => row.join(";")),
+  //   ].join("\n");
 
-    snapshot.docs.forEach((doc, index) => {
-      const responseData = doc.data();
-      txtContent += `Response #${index + 1}\n`;
-      txtContent += `Submitted: ${new Date(
-        responseData.createdAt?.seconds * 1000
-      ).toLocaleString()}\n`;
+  //   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  //   const url = URL.createObjectURL(blob);
+  //   const link = document.createElement("a");
+  //   link.href = url;
+  //   link.download = `form-responses-${formId}.csv`;
+  //   document.body.appendChild(link);
+  //   link.click();
+  //   document.body.removeChild(link);
+  // };
 
-      Object.entries(responseData.responses).forEach(([qKey, answer]) => {
-        const questionMeta = questionMap[qKey];
-        if (!questionMeta) return;
+  // const downloadResponsesTxt = () => {
+  //   if (!snapshot || !formData) return;
 
-        txtContent += `Q: ${questionMeta.title}\n`;
+  //   let txtContent = `Form Title: ${formData.title}\n`;
+  //   txtContent += `Total Responses: ${snapshot.docs.length}\n\n`;
+  //   txtContent += "=== ALL RESPONSES ===\n\n";
 
-        if (Array.isArray(answer)) {
-          txtContent += `A: ${answer.join(", ")}\n`;
-        } else if (typeof answer === "object" && answer !== null) {
-          txtContent += `A: ${JSON.stringify(answer)}\n`;
-        } else {
-          txtContent += `A: ${answer}\n`;
-        }
-      });
+  //   snapshot.docs.forEach((doc, index) => {
+  //     const responseData = doc.data();
+  //     txtContent += `Response #${index + 1}\n`;
+  //     txtContent += `Submitted: ${new Date(
+  //       responseData.createdAt?.seconds * 1000
+  //     ).toLocaleString()}\n`;
 
-      txtContent += "\n";
-    });
+  //     Object.entries(responseData.responses).forEach(([qKey, answer]) => {
+  //       const questionMeta = questionMap[qKey];
+  //       if (!questionMeta) return;
 
-    txtContent += "\n=== STATISTICS ===\n\n";
-    Object.entries(questionStats).forEach(([_, stat]) => {
-      txtContent += `Question: ${stat.title} (${stat.type})\n`;
-      txtContent += `Total answers: ${stat.totalAnswers}\n`;
+  //       txtContent += `Q: ${questionMeta.title}\n`;
 
-      if (stat.average !== undefined) {
-        txtContent += `Average: ${stat.average.toFixed(2)}\n`;
-        txtContent += `Range: ${stat.min} - ${stat.max}\n`;
-      }
+  //       if (Array.isArray(answer)) {
+  //         txtContent += `A: ${answer.join(", ")}\n`;
+  //       } else if (typeof answer === "object" && answer !== null) {
+  //         txtContent += `A: ${JSON.stringify(answer)}\n`;
+  //       } else {
+  //         txtContent += `A: ${answer}\n`;
+  //       }
+  //     });
 
-      if (stat.optionDistribution) {
-        txtContent += "Options:\n";
-        stat.optionDistribution.forEach((option: any) => {
-          txtContent += `- ${option.name}: ${
-            option.value
-          } (${option.percentage.toFixed(1)}%)\n`;
-        });
-      }
+  //     txtContent += "\n";
+  //   });
 
-      txtContent += "\n";
-    });
+  //   txtContent += "\n=== STATISTICS ===\n\n";
+  //   Object.entries(questionStats).forEach(([_, stat]) => {
+  //     txtContent += `Question: ${stat.title} (${stat.type})\n`;
+  //     txtContent += `Total answers: ${stat.totalAnswers}\n`;
 
-    const blob = new Blob([txtContent], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `FormResponses_${formData.title.replace(
-      /[^a-z0-9]/gi,
-      "_"
-    )}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
+  //     if (stat.average !== undefined) {
+  //       txtContent += `Average: ${stat.average.toFixed(2)}\n`;
+  //       txtContent += `Range: ${stat.min} - ${stat.max}\n`;
+  //     }
+
+  //     if (stat.optionDistribution) {
+  //       txtContent += "Options:\n";
+  //       stat.optionDistribution.forEach((option: any) => {
+  //         txtContent += `- ${option.name}: ${
+  //           option.value
+  //         } (${option.percentage.toFixed(1)}%)\n`;
+  //       });
+  //     }
+
+  //     txtContent += "\n";
+  //   });
+
+  //   const blob = new Blob([txtContent], { type: "text/plain" });
+  //   const url = URL.createObjectURL(blob);
+  //   const a = document.createElement("a");
+  //   a.href = url;
+  //   a.download = `FormResponses_${formData.title.replace(
+  //     /[^a-z0-9]/gi,
+  //     "_"
+  //   )}.txt`;
+  //   document.body.appendChild(a);
+  //   a.click();
+  //   document.body.removeChild(a);
+  //   URL.revokeObjectURL(url);
+  // };
 
   if (loading || formLoading)
     return (
@@ -550,13 +677,7 @@ export default function FormResponses() {
     <Container size="lg" py="xl">
       <Group justify="space-between" mb="xl">
         <Title order={2}>Form Responses Analysis</Title>
-        <Group>
-          {/* <Button
-            variant={showAllResponses ? "filled" : "outline"}
-            onClick={() => setShowAllResponses(!showAllResponses)}
-          >
-            {showAllResponses ? "Hide Full Responses" : "Show All Responses"}
-          </Button> */}
+        {/* <Group>
           <button
             onClick={downloadResponsesTxt}
             disabled={!snapshot || snapshot.docs.length === 0}
@@ -570,7 +691,7 @@ export default function FormResponses() {
           >
             Export to CSV
           </Button>
-        </Group>
+        </Group> */}
       </Group>
 
       <Paper withBorder p="md" mb="xl" style={{ display: "flex", gap: 10 }}>
@@ -585,7 +706,6 @@ export default function FormResponses() {
         </Title>
         <MantineReactTable table={table} />
       </Box>
-      {/* )} */}
 
       <Stack gap="xl">
         {Object.entries(questionStats).map(([qKey, stats]) => (

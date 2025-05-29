@@ -13,6 +13,8 @@ import {
   Tooltip,
   ActionIcon,
   rem,
+  useComputedColorScheme,
+  useMantineTheme,
 } from "@mantine/core";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { useState, useEffect } from "react";
@@ -55,12 +57,18 @@ const formSchema = yup.object().shape({
 });
 
 export default function FormBuilder() {
+  const theme = useMantineTheme();
+  const computedColorScheme = useComputedColorScheme("light", {
+    getInitialValueInEffect: true,
+  });
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const [opened, setOpened] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
-  const submissionLink = `${window.location.origin}/#/form-submit/${id || ""}`;
+  const submissionLink = `${
+    window.location.origin
+  }/form-builder/#/form-submit/${id || ""}`;
 
   const queryParams = new URLSearchParams(location.search);
   const isQuiz = queryParams.get("isQuiz") === "true";
@@ -211,13 +219,10 @@ export default function FormBuilder() {
       <Paper
         shadow="xs"
         p="md"
-        bg="dark.7"
         style={{
           position: "sticky",
           top: 0,
           zIndex: 10,
-          borderBottom: "1px solid #2c2e33",
-          color: "white",
           marginTop: -120,
         }}
       >
@@ -310,7 +315,6 @@ export default function FormBuilder() {
                 p="md"
                 radius="md"
                 withBorder
-                style={{ backgroundColor: "#1a1b1e" }}
               >
                 <Group justify="space-between" align="center">
                   <Title order={4}>Trang {pageIndex + 1}</Title>
@@ -503,4 +507,7 @@ export default function FormBuilder() {
       </Modal>
     </>
   );
+}
+function useMantineColorScheme(): { colorScheme: any } {
+  throw new Error("Function not implemented.");
 }

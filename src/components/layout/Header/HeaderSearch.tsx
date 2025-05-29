@@ -1,9 +1,17 @@
 import { IconSearch } from "@tabler/icons-react";
-import { Autocomplete, Burger, Group } from "@mantine/core";
+import {
+  ActionIcon,
+  Autocomplete,
+  Burger,
+  Button,
+  Group,
+  useMantineColorScheme,
+} from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 // import { MantineLogo } from "@mantinex/mantine-logo";
 import classes from "./HeaderSearch.module.css";
 import { Link } from "react-router-dom";
+import { IconSun, IconMoon } from "@tabler/icons-react";
 
 const links = [
   { link: "/about", label: "Features" },
@@ -14,6 +22,7 @@ const links = [
 
 export function HeaderSearch() {
   const [opened, { toggle }] = useDisclosure(false);
+  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
 
   const items = links.map((link) => (
     <a
@@ -38,6 +47,19 @@ export function HeaderSearch() {
         </Group>
 
         <Group>
+          <ActionIcon
+            onClick={() => toggleColorScheme()}
+            variant="outline"
+            color={colorScheme === "dark" ? "violet" : "indigo"}
+            size="lg"
+          >
+            {colorScheme === "dark" ? (
+              <IconSun size={16} stroke={1.5} />
+            ) : (
+              <IconMoon size={16} stroke={1.5} />
+            )}
+          </ActionIcon>
+
           <Group ml={50} gap={5} className={classes.links} visibleFrom="sm">
             {items}
           </Group>
