@@ -17,7 +17,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { doc, getDoc } from "firebase/firestore";
-import { db } from "../firebaseConfig";
+import { db } from "../firebase/firebaseConfig";
 import * as yup from "yup";
 import { FormData, FormResponses } from "../types/form";
 import { DateInput } from "@mantine/dates";

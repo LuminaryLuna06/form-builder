@@ -17,7 +17,7 @@ import {
 import { useCollection, useDocument } from "react-firebase-hooks/firestore";
 import { collection, query, orderBy, doc } from "firebase/firestore";
 import { Timestamp } from "firebase/firestore";
-import { db } from "../firebaseConfig";
+import { db } from "../firebase/firebaseConfig";
 import { useParams } from "react-router-dom";
 import { useMemo } from "react";
 import { PieChart, DonutChart } from "@mantine/charts";

@@ -23,7 +23,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { IconCopy, IconCheck } from "@tabler/icons-react";
 import { saveFormToFirestore } from "../utils/firebaseStorage";
 import { doc, getDoc } from "firebase/firestore";
-import { db } from "../firebaseConfig";
+import { db } from "../firebase/firebaseConfig";
 import { useForm, yupResolver } from "@mantine/form";
 import * as yup from "yup";
 

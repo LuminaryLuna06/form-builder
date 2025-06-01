@@ -18,7 +18,7 @@ import { DateInput } from "@mantine/dates";
 import "dayjs/locale/vi";
 import "@mantine/dates/styles.css";
 import { doc, getDoc } from "firebase/firestore";
-import { db } from "../firebaseConfig";
+import { db } from "../firebase/firebaseConfig";
 
 export default function PreviewForm() {
   const navigate = useNavigate();
@@ -104,7 +104,10 @@ export default function PreviewForm() {
                     </Stack>
 
                     {q.type === "short_text" && (
-                      <TextInput placeholder="Nhập câu trả lời của bạn" disabled />
+                      <TextInput
+                        placeholder="Nhập câu trả lời của bạn"
+                        disabled
+                      />
                     )}
 
                     {q.type === "multiple_choice" && q.options && (
@@ -141,10 +144,7 @@ export default function PreviewForm() {
                         {q.allowOtherAnswer && (
                           <Group align="center">
                             <Checkbox value="other" label="Khác" />
-                            <TextInput
-                              placeholder="Vui lòng nêu rõ"
-                              disabled
-                            />
+                            <TextInput placeholder="Vui lòng nêu rõ" disabled />
                           </Group>
                         )}
                       </Stack>

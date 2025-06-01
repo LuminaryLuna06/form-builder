@@ -12,7 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import { FormData } from "../../types/form";
 import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
-import { db } from "../../firebaseConfig";
+import { db } from "../../firebase/firebaseConfig";
 
 export default function Home() {
   const [forms, setForms] = useState<FormData[]>([]);

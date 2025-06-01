@@ -1,14 +1,17 @@
 import { HeaderSearch } from "./components/layout/Header/HeaderSearch";
 import { HashRouter as Router } from "react-router-dom";
 import PublicRoutes from "./routes/PublicRoutes";
+import UserRoutes from "./routes/UserRoutes";
+import { AuthProvider } from "./context/authContext";
 function App() {
   return (
-    <div>
-      <Router>
+    <Router>
+      <AuthProvider>
         <HeaderSearch />
-        <PublicRoutes />
-      </Router>
-    </div>
+        <UserRoutes />
+      </AuthProvider>
+      <PublicRoutes />
+    </Router>
   );
 }
 
