@@ -1,5 +1,5 @@
 import { doc, setDoc, getDoc } from "firebase/firestore";
-import { db } from "../firebaseConfig";
+import { db } from "../firebase/firebaseConfig";
 import { FormData } from "../types/form";
 
 // Lưu biểu mẫu vào Firestore
