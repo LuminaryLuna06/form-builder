@@ -35,6 +35,7 @@ export type FormData = {
   title: string;
   pages: Page[];
   isQuiz: boolean;
+  userUID: string;
 };
 
 export type FormResponses = Record<
