@@ -4,12 +4,14 @@ import FormBuilder from "../components/FormBuilder";
 import Home from "../pages/Home/Home";
 import FormResponses from "../components/FormResponses";
 import ProtectedRoutes from "./ProtectedRoutes";
+import ProfilePage from "../pages/Profile/ProfilePage";
 
 export default function UserRoutes() {
   return (
     <Routes>
       <Route element={<ProtectedRoutes />}>
         <Route path="/" element={<Home />} />
+        <Route path="/profile" element={<ProfilePage />} />
         <Route path="/create-form/:id" element={<FormBuilder />} />
         <Route path="/preview/:id" element={<PreviewForm />} />
         <Route path="/form-responses/:id" element={<FormResponses />} />

@@ -1,11 +1,17 @@
-import { IconSearch } from "@tabler/icons-react";
+import {
+  IconSearch,
+  IconUser,
+  IconLogout,
+  IconUserCircle,
+} from "@tabler/icons-react";
 import {
   ActionIcon,
   Autocomplete,
   Burger,
-  Button,
   Group,
   useMantineColorScheme,
+  Avatar,
+  Menu,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import classes from "./HeaderSearch.module.css";
@@ -19,6 +25,15 @@ export function HeaderSearch() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
+
+  const handleLogout = async () => {
+    try {
+      await doSignOut();
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
 
   return (
     <header className={classes.header}>
@@ -58,21 +73,54 @@ export function HeaderSearch() {
             ]}
             visibleFrom="xs"
           />
-          <Button
-            onClick={() => {
-              if (currentUser) {
-                // Handle logout logic here
-                doSignOut();
-              } else {
-                // Redirect to login page
-                navigate("/login");
-              }
-            }}
-            variant="outline"
-            color="indigo"
-          >
-            {currentUser ? "Logout" : "Login"}
-          </Button>
+          {currentUser ? (
+            <Menu shadow="md" width={200}>
+              <Menu.Target>
+                <Avatar
+                  src={currentUser.photoURL || null}
+                  alt={currentUser.displayName || "User"}
+                  radius="xl"
+                  size="md"
+                  style={{ cursor: "pointer" }}
+                >
+                  <IconUser size={20} />
+                </Avatar>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Label>
+                  {currentUser.displayName || currentUser.email || "User"}
+                </Menu.Label>
+                <Menu.Item
+                  leftSection={<IconUserCircle size={16} />}
+                  onClick={() => navigate("/profile")}
+                >
+                  Profile
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={<IconLogout size={16} />}
+                  onClick={handleLogout}
+                >
+                  Logout
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          ) : (
+            <Menu shadow="md" width={200}>
+              <Menu.Target>
+                <Avatar radius="xl" size="md" style={{ cursor: "pointer" }}>
+                  <IconUser size={20} />
+                </Avatar>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item
+                  leftSection={<IconUserCircle size={16} />}
+                  onClick={() => navigate("/login")}
+                >
+                  Login
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          )}
         </Group>
       </div>
     </header>
