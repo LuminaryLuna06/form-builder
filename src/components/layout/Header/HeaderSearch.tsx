@@ -3,35 +3,22 @@ import {
   ActionIcon,
   Autocomplete,
   Burger,
+  Button,
   Group,
   useMantineColorScheme,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import classes from "./HeaderSearch.module.css";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { IconSun, IconMoon } from "@tabler/icons-react";
-
-const links = [
-  { link: "/about", label: "Features" },
-  { link: "/pricing", label: "Pricing" },
-  { link: "/learn", label: "Learn" },
-  { link: "/community", label: "Community" },
-];
+import { useAuth } from "../../../context/authContext";
+import { doSignOut } from "../../../firebase/auth";
 
 export function HeaderSearch() {
   const [opened, { toggle }] = useDisclosure(false);
+  const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const { colorScheme, toggleColorScheme } = useMantineColorScheme();
-
-  const items = links.map((link) => (
-    <a
-      key={link.label}
-      href={link.link}
-      className={classes.link}
-      onClick={(event) => event.preventDefault()}
-    >
-      {link.label}
-    </a>
-  ));
 
   return (
     <header className={classes.header}>
@@ -56,10 +43,6 @@ export function HeaderSearch() {
               <IconMoon size={16} stroke={1.5} />
             )}
           </ActionIcon>
-
-          <Group ml={50} gap={5} className={classes.links} visibleFrom="sm">
-            {items}
-          </Group>
           <Autocomplete
             className={classes.search}
             placeholder="Search"
@@ -75,6 +58,21 @@ export function HeaderSearch() {
             ]}
             visibleFrom="xs"
           />
+          <Button
+            onClick={() => {
+              if (currentUser) {
+                // Handle logout logic here
+                doSignOut();
+              } else {
+                // Redirect to login page
+                navigate("/login");
+              }
+            }}
+            variant="outline"
+            color="indigo"
+          >
+            {currentUser ? "Logout" : "Login"}
+          </Button>
         </Group>
       </div>
     </header>

@@ -13,19 +13,24 @@ import { v4 as uuidv4 } from "uuid";
 import { FormData } from "../../types/form";
 import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { db } from "../../firebase/firebaseConfig";
+import { useAuth } from "../../context/authContext";
 
 export default function Home() {
   const [forms, setForms] = useState<FormData[]>([]);
   const navigate = useNavigate();
-
+  const { currentUser } = useAuth(); // Assuming you have a useAuth hook to get current user
+  console.log("Current User:", currentUser?.uid);
   useEffect(() => {
     const fetchForms = async () => {
+      if (!currentUser?.uid) return; // Ensure uid is defined
       try {
         const snapshot = await getDocs(collection(db, "forms"));
-        const formList = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as FormData[];
+        const formList = snapshot.docs
+          .map((doc) => ({
+            id: doc.id,
+            ...(doc.data() as Omit<FormData, "id">),
+          }))
+          .filter((form) => form.userUID === currentUser.uid) as FormData[];
         setForms(formList);
       } catch (err) {
         console.error("Lỗi khi tải forms:", err);
@@ -33,7 +38,7 @@ export default function Home() {
     };
 
     fetchForms();
-  }, []);
+  }, [currentUser?.uid]);
 
   const createForm = () => {
     const newId = uuidv4();

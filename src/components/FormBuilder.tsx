@@ -26,6 +26,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
 import { useForm, yupResolver } from "@mantine/form";
 import * as yup from "yup";
+import { useAuth } from "../context/authContext";
 
 const formSchema = yup.object().shape({
   title: yup.string().required("Form title is required"),
@@ -60,6 +61,7 @@ export default function FormBuilder() {
   const location = useLocation();
   const [opened, setOpened] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const { currentUser } = useAuth();
   const submissionLink = `${
     window.location.origin
   }/form-builder/#/form-submit/${id || ""}`;
@@ -97,6 +99,7 @@ export default function FormBuilder() {
           ],
         },
       ],
+      userUID: currentUser?.uid || "",
     },
     validate: yupResolver(formSchema),
   });
@@ -106,6 +109,10 @@ export default function FormBuilder() {
       if (!id) return;
 
       try {
+        if (!currentUser?.uid || !id) {
+          console.warn("User UID hoặc Form ID không xác định!");
+          return;
+        }
         const docRef = doc(db, "forms", id);
         const docSnap = await getDoc(docRef);
 
