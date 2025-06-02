@@ -19,7 +19,6 @@ export default function Home() {
   const [forms, setForms] = useState<FormData[]>([]);
   const navigate = useNavigate();
   const { currentUser } = useAuth(); // Assuming you have a useAuth hook to get current user
-  console.log("Current User:", currentUser?.uid);
   useEffect(() => {
     const fetchForms = async () => {
       if (!currentUser?.uid) return; // Ensure uid is defined
