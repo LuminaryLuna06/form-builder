@@ -22,6 +22,10 @@ export const doCreateUserWithEmailAndPassword = async (
     await setDoc(doc(db, "users", user.uid), {
       email: user.email,
       name: user.displayName || "",
+      uid: user.uid,
+      createdAt: new Date().toISOString(),
+      isEmailUser: true,
+      isGoogleUser: false,
     });
     console.log("User signed up: ", user.email);
     return user;
@@ -52,6 +56,10 @@ export const doSignInWithGoogle = async () => {
         {
           email: user.email,
           name: user.displayName || "",
+          uid: user.uid,
+          createdAt: new Date().toISOString(),
+          isEmailUser: false,
+          isGoogleUser: true,
         },
         {
           merge: true,
