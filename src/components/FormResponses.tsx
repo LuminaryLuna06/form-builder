@@ -13,13 +13,18 @@ import {
   LoadingOverlay,
   SimpleGrid,
   ComboboxItem,
+  Flex,
+  ActionIcon,
+  Tooltip,
+  Notification,
+  Modal,
 } from "@mantine/core";
 import { useCollection, useDocument } from "react-firebase-hooks/firestore";
-import { collection, query, orderBy, doc } from "firebase/firestore";
+import { collection, query, orderBy, doc, deleteDoc } from "firebase/firestore";
 import { Timestamp } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
 import { useParams } from "react-router-dom";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { PieChart, DonutChart } from "@mantine/charts";
 import { DefaultMantineColor } from "@mantine/core";
 import {
@@ -29,9 +34,13 @@ import {
   useMantineReactTable,
   type MRT_ColumnDef,
 } from "mantine-react-table";
+import { MRT_Localization_VI } from "mantine-react-table/locales/vi/index.cjs";
 import { mkConfig, generateCsv, download } from "export-to-csv";
 import { ResponseData, FormData, QuestionType } from "../types/form";
-import { IconDownload } from "@tabler/icons-react";
+import { IconAlertCircle, IconDownload, IconTrash } from "@tabler/icons-react";
+import { modals } from "@mantine/modals";
+import { useAuth } from "../context/authContext";
+import { notifications } from "@mantine/notifications";
 
 interface QuestionStats {
   title: string;
@@ -72,6 +81,10 @@ const csvConfig = mkConfig({
 
 export default function FormResponses() {
   const { id: formId } = useParams();
+  const { currentUser } = useAuth();
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [selectedRow, setSelectedRow] = useState<ResponseData | null>(null);
+  const [modalOpened, setModalOpened] = useState(false);
 
   // Modified export functions for FormResponses.tsx
   const handleExportRows = (rows: MRT_Row<ResponseData>[]) => {
@@ -344,6 +357,9 @@ export default function FormResponses() {
                     day: "2-digit",
                     month: "2-digit",
                     year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
                   })
                 : "Invalid date"}
             </Text>
@@ -455,6 +471,75 @@ export default function FormResponses() {
     return baseColumns;
   }, [questionMap, questionStats, formData]);
 
+  const handleDeleteRow = async (row: MRT_Row<ResponseData>) => {
+    if (!currentUser || !formId) return;
+
+    modals.openConfirmModal({
+      title: "Xác nhận xóa phản hồi",
+      children: (
+        <Text>
+          Bạn có chắc chắn muốn xóa phản hồi này? Hành động này không thể hoàn
+          tác.
+        </Text>
+      ),
+      labels: { confirm: "Xóa", cancel: "Hủy" },
+      confirmProps: { color: "red" },
+      onConfirm: async () => {
+        try {
+          await deleteDoc(
+            doc(db, "responses", formId, "submissions", row.original.id)
+          );
+          notifications.show({
+            title: "Thành công",
+            message: "Phản hồi đã được xóa.",
+            color: "green",
+          });
+        } catch (error: any) {
+          setDeleteError(error.message || "Lỗi khi xóa phản hồi");
+          console.error("Error deleting response:", error);
+        }
+      },
+    });
+  };
+  const handleDeleteSelectedRows = (rows: MRT_Row<ResponseData>[]) => {
+    if (!currentUser || !formId) return;
+
+    modals.openConfirmModal({
+      title: "Xác nhận xóa nhiều phản hồi",
+      children: (
+        <Text>
+          Bạn có chắc chắn muốn xóa {rows.length} phản hồi đã chọn? Hành động
+          này không thể hoàn tác.
+        </Text>
+      ),
+      labels: { confirm: "Xóa", cancel: "Hủy" },
+      confirmProps: { color: "red" },
+      onConfirm: async () => {
+        try {
+          const deletePromises = rows.map((row) =>
+            deleteDoc(
+              doc(db, "responses", formId, "submissions", row.original.id)
+            )
+          );
+          await Promise.all(deletePromises);
+          notifications.show({
+            title: "Thành công",
+            message: `${rows.length} phản hồi đã được xóa.`,
+            color: "green",
+          });
+        } catch (error: any) {
+          setDeleteError(error.message || "Lỗi khi xóa các phản hồi");
+          console.error("Error deleting responses:", error);
+        }
+      },
+    });
+  };
+
+  const handleRowClick = (row: MRT_Row<ResponseData>) => {
+    setSelectedRow(row.original);
+    setModalOpened(true);
+  };
+
   const table = useMantineReactTable<ResponseData>({
     columns,
     data: tableData,
@@ -462,12 +547,14 @@ export default function FormResponses() {
       pagination: { pageSize: 10, pageIndex: 0 },
       density: "xs",
     },
+    getRowId: (row) => row.id,
     enableRowSelection: true,
     enableColumnResizing: true,
     enableColumnOrdering: true,
-    enableFullScreenToggle: false,
+    enableDensityToggle: false,
+    enableFullScreenToggle: true,
     enableTopToolbar: true,
-    columnFilterDisplayMode: "popover", // Use popover for filters
+    columnFilterDisplayMode: "popover",
     mantinePaperProps: {
       shadow: "sm",
       withBorder: true,
@@ -482,6 +569,22 @@ export default function FormResponses() {
       withColumnBorders: true,
     },
     enableStickyHeader: true,
+    localization: MRT_Localization_VI,
+    mantineTableBodyRowProps: ({ row }) => ({
+      onClick: () => handleRowClick(row),
+      style: {
+        cursor: "pointer",
+      },
+    }),
+    renderRowActions: ({ row }) => (
+      <Flex gap="md">
+        <Tooltip label="Delete">
+          <ActionIcon color="red" onClick={() => handleDeleteRow(row)}>
+            <IconTrash />
+          </ActionIcon>
+        </Tooltip>
+      </Flex>
+    ),
     renderTopToolbarCustomActions: ({ table }) => (
       <Box
         style={{
@@ -498,7 +601,7 @@ export default function FormResponses() {
           leftSection={<IconDownload />}
           variant="filled"
         >
-          Export All Data
+          Xuất Tất Cả Dữ Liệu
         </Button>
         <Button
           disabled={table.getPrePaginationRowModel().rows.length === 0}
@@ -509,7 +612,7 @@ export default function FormResponses() {
           leftSection={<IconDownload />}
           variant="filled"
         >
-          Export All Rows
+          Xuất Tất Cả Hàng
         </Button>
         <Button
           disabled={table.getRowModel().rows.length === 0}
@@ -518,7 +621,7 @@ export default function FormResponses() {
           leftSection={<IconDownload />}
           variant="filled"
         >
-          Export Page Rows
+          Xuất Các Hàng Trong Trang
         </Button>
         <Button
           disabled={
@@ -529,7 +632,20 @@ export default function FormResponses() {
           leftSection={<IconDownload />}
           variant="filled"
         >
-          Export Selected Rows
+          Xuất Hàng Được Chọn
+        </Button>
+        <Button
+          color="red"
+          disabled={
+            !table.getIsSomeRowsSelected() && !table.getIsAllRowsSelected()
+          }
+          onClick={() =>
+            handleDeleteSelectedRows(table.getSelectedRowModel().rows)
+          }
+          leftSection={<IconTrash />}
+          variant="filled"
+        >
+          Xóa Các Hàng Được Chọn
         </Button>
       </Box>
     ),
@@ -562,7 +678,17 @@ export default function FormResponses() {
       <Group justify="space-between" mb="xl">
         <Title order={2}>Form Responses Analysis</Title>
       </Group>
-
+      {deleteError && (
+        <Notification
+          icon={<IconAlertCircle size={18} />}
+          color="red"
+          onClose={() => setDeleteError(null)}
+          withCloseButton
+          mb="md"
+        >
+          {deleteError}
+        </Notification>
+      )}
       <Paper withBorder p="md" mb="xl" style={{ display: "flex", gap: 10 }}>
         <Text fw={500}>Total Responses:</Text>
         <Badge size="lg">{responseCount}</Badge>
@@ -575,6 +701,71 @@ export default function FormResponses() {
         </Title>
         <MantineReactTable table={table} />
       </Box>
+
+      <Modal
+        opened={modalOpened}
+        onClose={() => setModalOpened(false)}
+        title="Chi tiết phản hồi"
+        size="lg"
+      >
+        {selectedRow && (
+          <Stack>
+            <Text>
+              Thời gian gửi:{" "}
+              {selectedRow.createdAt instanceof Timestamp
+                ? selectedRow.createdAt.toDate().toLocaleString("en-GB")
+                : "Invalid date"}
+            </Text>
+            {formData?.isQuiz && (
+              <Text>
+                Điểm số:{" "}
+                {typeof selectedRow.totalScore === "number"
+                  ? `${(selectedRow.totalScore * 100).toFixed(2)}%`
+                  : "-"}
+              </Text>
+            )}
+            <Divider />
+            {Object.keys(questionMap)
+              .sort(
+                (a, b) => parseInt(a.substring(1)) - parseInt(b.substring(1))
+              )
+              .map((qKey) => {
+                const answer = selectedRow.responses[qKey];
+                const questionType = questionMap[qKey].type;
+                let displayAnswer: string;
+
+                if (answer === undefined || answer === null) {
+                  displayAnswer = "-";
+                } else if (questionType === "date") {
+                  try {
+                    const date =
+                      answer instanceof Timestamp
+                        ? answer.toDate()
+                        : answer instanceof Date
+                        ? answer
+                        : Array.isArray(answer)
+                        ? new Date()
+                        : new Date(answer);
+                    displayAnswer = date.toLocaleDateString("en-GB");
+                  } catch {
+                    displayAnswer = "Invalid date";
+                  }
+                } else if (Array.isArray(answer)) {
+                  displayAnswer = answer.join(", ");
+                } else {
+                  displayAnswer = String(answer);
+                }
+
+                return (
+                  <Box key={qKey}>
+                    <Text fw={700}>{questionMap[qKey].title}</Text>
+                    <Text>{displayAnswer}</Text>
+                  </Box>
+                );
+              })}
+          </Stack>
+        )}
+      </Modal>
 
       <Stack gap="xl">
         {Object.entries(questionStats).map(([qKey, stats]) => (
