@@ -691,14 +691,11 @@ export default function FormResponses() {
       )}
       <Paper withBorder p="md" mb="xl" style={{ display: "flex", gap: 10 }}>
         <Text fw={500}>Total Responses:</Text>
-        <Badge size="lg">{responseCount}</Badge>
+        <Badge size="lg" fw={700}>{responseCount}</Badge>
       </Paper>
 
       {/* {showAllResponses && ( */}
       <Box mt="xl" mb="xl">
-        <Title order={4} mb="md">
-          All Responses ({responseCount})
-        </Title>
         <MantineReactTable table={table} />
       </Box>
 
