@@ -13,7 +13,7 @@ import {
   LoadingOverlay,
 } from "@mantine/core";
 import { useForm, yupResolver } from "@mantine/form";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { doc, getDoc } from "firebase/firestore";
@@ -59,7 +59,6 @@ const shuffleArray = (array: string[]): string[] => {
   }
   return newArray;
 };
-
 const shuffleQuestions = (questions: any[]) => {
   const shuffled = [...questions];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -81,6 +80,7 @@ const fetchFormData = async (id: string) => {
 };
 
 export default function FormSubmission() {
+  const navigate = useNavigate();
   const { id } = useParams();
   const [submitting, setSubmitting] = useState(false);
   const [otherSelected, setOtherSelected] = useState<Record<string, boolean>>(
@@ -90,7 +90,6 @@ export default function FormSubmission() {
     Record<string, { options: string[]; indexMap: Record<number, number> }>
   >({});
   const [shuffledPages, setShuffledPages] = useState<FormData["pages"]>([]);
-  const navigate = useNavigate();
 
   const {
     data: formData,
@@ -103,10 +102,15 @@ export default function FormSubmission() {
     staleTime: 1000 * 60,
   });
 
-  const form = useForm<FormResponses>({
+  const validationSchema = useMemo(() => {
+    return yupResolver(createValidationSchema(formData || null));
+  }, [formData]);
+
+  const responses = useForm<FormResponses>({
     initialValues: {},
-    validate: yupResolver(createValidationSchema(formData || null)),
+    validate: validationSchema,
   });
+  console.log(responses.values);
 
   // Initialize form state when formData is loaded
   useEffect(() => {
@@ -122,7 +126,7 @@ export default function FormSubmission() {
         }
         return acc;
       }, {} as FormResponses);
-    form.setValues(initialValues);
+    responses.setValues(initialValues);
 
     // Initialize otherSelected
     const otherSelectedInit = formData.pages
@@ -169,7 +173,25 @@ export default function FormSubmission() {
         }, {} as Record<string, { options: string[]; indexMap: Record<number, number> }>);
       setShuffledOptions(shuffled);
     }
-  }, [formData, form]);
+  }, [formData]);
+
+  if (isLoading) {
+    return (
+      <Box pos="relative" h="100vh">
+        <LoadingOverlay visible />
+      </Box>
+    );
+  }
+
+  if (error || !formData) {
+    return (
+      <Container size="sm" py="xl">
+        <Text c="red" size="lg" ta="center">
+          {error instanceof Error ? error.message : "Form not found!"}
+        </Text>
+      </Container>
+    );
+  }
 
   const handleSubmit = async (values: FormResponses) => {
     if (!formData || !id) return;
@@ -295,31 +317,13 @@ export default function FormSubmission() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <Box pos="relative" h="100vh">
-        <LoadingOverlay visible />
-      </Box>
-    );
-  }
-
-  if (error || !formData) {
-    return (
-      <Container size="sm" py="xl">
-        <Text c="red" size="lg" ta="center">
-          {error instanceof Error ? error.message : "Form not found!"}
-        </Text>
-      </Container>
-    );
-  }
-
   return (
     <Container size="sm" py="xl">
       <LoadingOverlay visible={submitting} />
       <Title order={2} mb="lg">
         {formData.title}
       </Title>
-      <form onSubmit={form.onSubmit(handleSubmit)}>
+      <form onSubmit={responses.onSubmit(handleSubmit)}>
         <Stack>
           {shuffledPages.map((page, pageIndex) => (
             <Stack key={page.name} mb="xl">
@@ -347,15 +351,15 @@ export default function FormSubmission() {
                     {q.type === "short_text" && (
                       <TextInput
                         placeholder="Your answer"
-                        {...form.getInputProps(q.id)}
+                        {...responses.getInputProps(q.id)}
                       />
                     )}
 
                     {q.type === "multiple_choice" && q.options && (
                       <Radio.Group
-                        {...form.getInputProps(q.id)}
+                        {...responses.getInputProps(q.id)}
                         onChange={(value) => {
-                          form.setFieldValue(q.id, value);
+                          responses.setFieldValue(q.id, value);
                           setOtherSelected((prev) => ({
                             ...prev,
                             [q.id]: value === "other",
@@ -378,7 +382,7 @@ export default function FormSubmission() {
                               <Radio value="other" label="Khác" />
                               <TextInput
                                 placeholder="Vui lòng nêu rõ"
-                                {...form.getInputProps(q.id + "_other")}
+                                {...responses.getInputProps(q.id + "_other")}
                                 disabled={!otherSelected[q.id]}
                               />
                             </Group>
@@ -388,7 +392,7 @@ export default function FormSubmission() {
                     )}
 
                     {q.type === "checkbox" && q.options && (
-                      <Checkbox.Group {...form.getInputProps(q.id)}>
+                      <Checkbox.Group {...responses.getInputProps(q.id)}>
                         <Stack>
                           {(formData.isQuiz && shuffledOptions[q.id]?.options
                             ? shuffledOptions[q.id].options
@@ -405,12 +409,12 @@ export default function FormSubmission() {
                               <Checkbox value="other" label="Khác" />
                               <TextInput
                                 placeholder="Vui lòng nêu rõ"
-                                {...form.getInputProps(q.id + "_other")}
+                                {...responses.getInputProps(q.id + "_other")}
                                 disabled={
-                                  !Array.isArray(form.values[q.id]) ||
-                                  !(form.values[q.id] as string[]).includes(
-                                    "other"
-                                  )
+                                  !Array.isArray(responses.values[q.id]) ||
+                                  !(
+                                    responses.values[q.id] as string[]
+                                  ).includes("other")
                                 }
                               />
                             </Group>
@@ -424,7 +428,7 @@ export default function FormSubmission() {
                         {Array.from(
                           { length: q.ratingScale || 11 },
                           (_, idx) => {
-                            const currentValue = form.values[q.id];
+                            const currentValue = responses.values[q.id];
                             const numericValue =
                               typeof currentValue === "number"
                                 ? currentValue
@@ -434,7 +438,9 @@ export default function FormSubmission() {
                             return (
                               <Box
                                 key={idx}
-                                onClick={() => form.setFieldValue(q.id, idx)}
+                                onClick={() =>
+                                  responses.setFieldValue(q.id, idx)
+                                }
                                 style={{
                                   cursor: "pointer",
                                   opacity: numericValue >= idx ? 1 : 0.4,
@@ -460,11 +466,11 @@ export default function FormSubmission() {
                         valueFormat="DD/MM/YYYY"
                         locale="vi"
                         value={
-                          form.values[q.id] instanceof Date
-                            ? (form.values[q.id] as Date)
-                            : typeof form.values[q.id] === "string" &&
-                              form.values[q.id]
-                            ? new Date(form.values[q.id] as string)
+                          responses.values[q.id] instanceof Date
+                            ? (responses.values[q.id] as Date)
+                            : typeof responses.values[q.id] === "string" &&
+                              responses.values[q.id]
+                            ? new Date(responses.values[q.id] as string)
                             : null
                         }
                         onChange={(date) => {
@@ -472,18 +478,18 @@ export default function FormSubmission() {
                             const value = date
                               ? dayjs(date).format("YYYY-MM-DD")
                               : null;
-                            form.setFieldValue(q.id, value);
+                            responses.setFieldValue(q.id, value);
                           } catch (error) {
                             console.error("Date conversion error:", error);
-                            form.setFieldValue(q.id, null);
+                            responses.setFieldValue(q.id, null);
                           }
                         }}
                         style={{ maxWidth: 200 }}
                       />
                     )}
-                    {form.errors[q.id] && (
+                    {responses.errors[q.id] && (
                       <Text size="sm" color="red">
-                        {form.errors[q.id]}
+                        {responses.errors[q.id]}
                       </Text>
                     )}
                   </Stack>
