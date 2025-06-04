@@ -15,7 +15,7 @@ import {
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import classes from "./HeaderSearch.module.css";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { IconSun, IconMoon } from "@tabler/icons-react";
 import { useAuth } from "../../../context/authContext";
 import { doSignOut } from "../../../firebase/auth";
@@ -34,6 +34,17 @@ export function HeaderSearch() {
       console.error("Logout error:", error);
     }
   };
+  const location = useLocation();
+  const hideOnRoutes = [
+    "/login",
+    "/signup",
+    "/form-submitted",
+    "/form-submit",
+    "/preview",
+  ];
+
+  if (hideOnRoutes.some((path) => location.pathname.startsWith(path)))
+    return null;
 
   return (
     <header className={classes.header}>
