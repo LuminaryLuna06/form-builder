@@ -21,6 +21,8 @@
     "@mantine/notifications": "^7.17.8",
     "@mantinex/mantine-logo": "^1.1.0",
     "@tabler/icons-react": "^3.31.0",
+    "@tanstack/react-query": "^5.80.2",
+    "@tanstack/react-query-devtools": "^5.80.2",
     "dayjs": "^1.11.13",
     "export-to-csv": "^1.4.0",
     "firebase": "^11.6.1",
