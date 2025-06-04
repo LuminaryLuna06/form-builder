@@ -332,9 +332,7 @@ export default function FormSubmission() {
                 <Text size="sm" color="red" fw={500}>
                   *
                 </Text>
-                <Text size="sm" color="white">
-                  Is Required
-                </Text>
+                <Text size="sm">Is Required</Text>
               </Group>
               {page.elements.map((q) => (
                 <Card key={q.id} withBorder shadow="xs" radius="md">
@@ -486,11 +484,6 @@ export default function FormSubmission() {
                         }}
                         style={{ maxWidth: 200 }}
                       />
-                    )}
-                    {responses.errors[q.id] && (
-                      <Text size="sm" color="red">
-                        {responses.errors[q.id]}
-                      </Text>
                     )}
                   </Stack>
                 </Card>
