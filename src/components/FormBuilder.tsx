@@ -13,6 +13,7 @@ import {
   Tooltip,
   ActionIcon,
   rem,
+  LoadingOverlay,
 } from "@mantine/core";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { useState, useEffect } from "react";
@@ -27,6 +28,7 @@ import { db } from "../firebase/firebaseConfig";
 import { useForm, yupResolver } from "@mantine/form";
 import * as yup from "yup";
 import { useAuth } from "../context/authContext";
+import { useQuery } from "@tanstack/react-query";
 
 const formSchema = yup.object().shape({
   title: yup.string().required("Form title is required"),
@@ -104,33 +106,33 @@ export default function FormBuilder() {
     validate: yupResolver(formSchema),
   });
 
-  useEffect(() => {
-    const fetchForm = async () => {
-      if (!id) return;
-
-      try {
-        if (!currentUser?.uid || !id) {
-          console.warn("User UID hoặc Form ID không xác định!");
-          return;
-        }
-        const docRef = doc(db, "forms", id);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          const formData = docSnap.data() as FormData;
-          form.reset();
-          form.setValues(formData);
-          console.log(form.values);
-        } else {
-          console.warn("Form không tồn tại!");
-        }
-      } catch (error) {
-        console.error("Lỗi khi tải form từ Firestore:", error);
+  const { data: formData, isLoading } = useQuery({
+    queryKey: ["form", id],
+    queryFn: async () => {
+      if (!id || !currentUser?.uid) {
+        console.warn("User UID hoặc Form ID không xác định!");
+        return null;
       }
-    };
+      const docRef = doc(db, "forms", id);
+      const docSnap = await getDoc(docRef);
 
-    fetchForm();
-  }, [id]);
+      if (docSnap.exists()) {
+        return docSnap.data() as FormData;
+      } else {
+        console.warn("Form không tồn tại!");
+        return null;
+      }
+    },
+    enabled: !!id && !!currentUser?.uid,
+    staleTime: 1000 * 60,
+  });
+
+  useEffect(() => {
+    if (formData) {
+      form.reset();
+      form.setValues(formData);
+    }
+  }, [formData]);
 
   const addQuestion = (type: QuestionType, pageIndex: number) => {
     const newQuestion: Question = {
@@ -213,6 +215,10 @@ export default function FormBuilder() {
       return { ...prev, pages: newPages };
     });
   };
+
+  if (isLoading) {
+    return <LoadingOverlay visible={true} />;
+  }
 
   return (
     <>

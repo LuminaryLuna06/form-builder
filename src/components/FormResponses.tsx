@@ -19,8 +19,15 @@ import {
   Notification,
   Modal,
 } from "@mantine/core";
-import { useCollection, useDocument } from "react-firebase-hooks/firestore";
-import { collection, query, orderBy, doc, deleteDoc } from "firebase/firestore";
+import {
+  collection,
+  query,
+  orderBy,
+  doc,
+  deleteDoc,
+  getDocs,
+  getDoc,
+} from "firebase/firestore";
 import { Timestamp } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
 import { useParams } from "react-router-dom";
@@ -41,6 +48,7 @@ import { IconAlertCircle, IconDownload, IconTrash } from "@tabler/icons-react";
 import { modals } from "@mantine/modals";
 import { useAuth } from "../context/authContext";
 import { notifications } from "@mantine/notifications";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface QuestionStats {
   title: string;
@@ -79,99 +87,95 @@ const csvConfig = mkConfig({
   useKeysAsHeaders: true,
 });
 
+const fetchFormResponses = async (formId: string) => {
+  const responsesQuery = query(
+    collection(db, "responses", formId, "submissions"),
+    orderBy("createdAt", "desc")
+  );
+  const snapshot = await getDocs(responsesQuery);
+  return snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as ResponseData[];
+};
+
+const fetchFormData = async (formId: string) => {
+  const docRef = doc(db, "forms", formId);
+  const docSnap = await getDoc(docRef);
+  if (!docSnap.exists()) {
+    throw new Error("Form not found");
+  }
+  return docSnap.data() as FormData;
+};
+
 export default function FormResponses() {
   const { id: formId } = useParams();
   const { currentUser } = useAuth();
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [selectedRow, setSelectedRow] = useState<ResponseData | null>(null);
   const [modalOpened, setModalOpened] = useState(false);
+  const queryClient = useQueryClient();
 
-  // Modified export functions for FormResponses.tsx
-  const handleExportRows = (rows: MRT_Row<ResponseData>[]) => {
-    const questionKeys = Object.keys(questionMap).sort(
-      (a, b) => parseInt(a.substring(1)) - parseInt(b.substring(1))
-    );
+  const {
+    data: formData,
+    isLoading: formLoading,
+    error: formError,
+  } = useQuery({
+    queryKey: ["form", formId],
+    queryFn: () => fetchFormData(formId!),
+    enabled: !!formId,
+    staleTime: 1000 * 60, // 1 minute
+  });
 
-    const rowData = rows.map((row) => {
-      const original = row.original;
-      const responseData: Record<string, any> = {
-        Timestamp: original.createdAt.toDate().toISOString(),
-      };
+  const {
+    data: responses = [],
+    isLoading: responsesLoading,
+    error: responsesError,
+  } = useQuery({
+    queryKey: ["form-responses", formId],
+    queryFn: () => fetchFormResponses(formId!),
+    enabled: !!formId,
+    staleTime: 1000 * 60,
+  });
 
-      // Add question columns (using question title as key)
-      questionKeys.forEach((qKey) => {
-        const questionTitle = questionMap[qKey]?.title || qKey; // Fallback to qKey if title missing
-        const answer = original.responses[qKey];
-        responseData[questionTitle] = Array.isArray(answer)
-          ? answer.join(", ")
-          : answer instanceof Timestamp
-          ? answer.toDate().toLocaleDateString("en-GB")
-          : answer ?? "";
+  const deleteResponseMutation = useMutation({
+    mutationFn: async (responseId: string) => {
+      await deleteDoc(doc(db, "responses", formId!, "submissions", responseId));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["form-responses", formId] });
+      notifications.show({
+        title: "Thành công",
+        message: "Phản hồi đã được xóa.",
+        color: "green",
       });
+    },
+    onError: (error: any) => {
+      setDeleteError(error.message || "Lỗi khi xóa phản hồi");
+      console.error("Error deleting response:", error);
+    },
+  });
 
-      // Add Score column if form is a quiz
-      if (formData?.isQuiz) {
-        responseData["Score"] =
-          typeof original.totalScore === "number"
-            ? `${(original.totalScore * 100).toFixed(2)}%`
-            : "";
-      }
-
-      return responseData;
-    });
-
-    const csv = generateCsv(csvConfig)(rowData);
-    download(csvConfig)(csv);
-  };
-
-  const handleExportData = () => {
-    const questionKeys = Object.keys(questionMap).sort(
-      (a, b) => parseInt(a.substring(1)) - parseInt(b.substring(1))
-    );
-
-    const transformedData = tableData.map((item) => {
-      const responseData: Record<string, any> = {
-        Timestamp: item.createdAt.toDate().toISOString(),
-      };
-
-      // Add question columns (using question title as key)
-      questionKeys.forEach((qKey) => {
-        const questionTitle = questionMap[qKey]?.title || qKey; // Fallback to qKey if title missing
-        const answer = item.responses[qKey];
-        responseData[questionTitle] = Array.isArray(answer)
-          ? answer.join(", ")
-          : answer instanceof Timestamp
-          ? answer.toDate().toLocaleDateString("en-GB")
-          : answer ?? "";
+  const deleteMultipleResponsesMutation = useMutation({
+    mutationFn: async (responseIds: string[]) => {
+      const deletePromises = responseIds.map((id) =>
+        deleteDoc(doc(db, "responses", formId!, "submissions", id))
+      );
+      await Promise.all(deletePromises);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["form-responses", formId] });
+      notifications.show({
+        title: "Thành công",
+        message: "Các phản hồi đã được xóa.",
+        color: "green",
       });
-
-      // Add Score column if form is a quiz
-      if (formData?.isQuiz) {
-        responseData["Score"] =
-          typeof item.totalScore === "number"
-            ? `${(item.totalScore * 100).toFixed(2)}%`
-            : "";
-      }
-
-      return responseData;
-    });
-
-    const csv = generateCsv(csvConfig)(transformedData);
-    download(csvConfig)(csv);
-  };
-
-  const [formSnapshot, formLoading, formError] = useDocument(
-    doc(db, "forms", formId || "")
-  );
-
-  const [snapshot, loading, error] = useCollection(
-    query(
-      collection(db, "responses", formId || "", "submissions"),
-      orderBy("createdAt", "desc")
-    )
-  );
-
-  const formData = formSnapshot?.data() as FormData | undefined;
+    },
+    onError: (error: any) => {
+      setDeleteError(error.message || "Lỗi khi xóa các phản hồi");
+      console.error("Error deleting responses:", error);
+    },
+  });
 
   const questionMap = useMemo(() => {
     if (!formData) return {};
@@ -198,14 +202,13 @@ export default function FormResponses() {
   ];
 
   const { questionStats, responseCount } = useMemo(() => {
-    if (!snapshot || !questionMap)
+    if (!responses || !questionMap)
       return {
         questionStats: {} as Record<string, QuestionStats>,
         responseCount: 0,
       };
 
     const stats: Record<string, any> = {};
-    const responses = snapshot.docs.map((doc) => doc.data());
 
     responses.forEach((response) => {
       Object.entries(response.responses).forEach(([qKey, answer]) => {
@@ -282,7 +285,7 @@ export default function FormResponses() {
       questionStats: stats,
       responseCount: responses.length,
     };
-  }, [snapshot, questionMap]);
+  }, [responses, questionMap]);
 
   const ratingData: {
     title?: string;
@@ -297,8 +300,7 @@ export default function FormResponses() {
   if (ratingQuestionKey) {
     const counts = Array(11).fill(0); // Assuming ratings are 0-10
 
-    snapshot?.docs.forEach((doc) => {
-      const response = doc.data() as ResponseData;
+    responses.forEach((response) => {
       const rating = response.responses?.[ratingQuestionKey];
       if (typeof rating === "number" && rating >= 0 && rating <= 10) {
         counts[rating]++;
@@ -315,14 +317,7 @@ export default function FormResponses() {
       .filter((item) => item.value > 0);
   }
 
-  const tableData = useMemo(
-    () =>
-      (snapshot?.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as ResponseData[]) || [],
-    [snapshot]
-  );
+  const tableData = useMemo(() => responses || [], [responses]);
   const columns = useMemo<MRT_ColumnDef<ResponseData>[]>(() => {
     if (!questionMap) return [];
 
@@ -484,20 +479,8 @@ export default function FormResponses() {
       ),
       labels: { confirm: "Xóa", cancel: "Hủy" },
       confirmProps: { color: "red" },
-      onConfirm: async () => {
-        try {
-          await deleteDoc(
-            doc(db, "responses", formId, "submissions", row.original.id)
-          );
-          notifications.show({
-            title: "Thành công",
-            message: "Phản hồi đã được xóa.",
-            color: "green",
-          });
-        } catch (error: any) {
-          setDeleteError(error.message || "Lỗi khi xóa phản hồi");
-          console.error("Error deleting response:", error);
-        }
+      onConfirm: () => {
+        deleteResponseMutation.mutate(row.original.id);
       },
     });
   };
@@ -514,23 +497,10 @@ export default function FormResponses() {
       ),
       labels: { confirm: "Xóa", cancel: "Hủy" },
       confirmProps: { color: "red" },
-      onConfirm: async () => {
-        try {
-          const deletePromises = rows.map((row) =>
-            deleteDoc(
-              doc(db, "responses", formId, "submissions", row.original.id)
-            )
-          );
-          await Promise.all(deletePromises);
-          notifications.show({
-            title: "Thành công",
-            message: `${rows.length} phản hồi đã được xóa.`,
-            color: "green",
-          });
-        } catch (error: any) {
-          setDeleteError(error.message || "Lỗi khi xóa các phản hồi");
-          console.error("Error deleting responses:", error);
-        }
+      onConfirm: () => {
+        deleteMultipleResponsesMutation.mutate(
+          rows.map((row) => row.original.id)
+        );
       },
     });
   };
@@ -651,16 +621,91 @@ export default function FormResponses() {
     ),
   });
 
-  if (loading || formLoading)
+  // Modified export functions for FormResponses.tsx
+  const handleExportRows = (rows: MRT_Row<ResponseData>[]) => {
+    const questionKeys = Object.keys(questionMap).sort(
+      (a, b) => parseInt(a.substring(1)) - parseInt(b.substring(1))
+    );
+
+    const rowData = rows.map((row) => {
+      const original = row.original;
+      const responseData: Record<string, any> = {
+        Timestamp: original.createdAt.toDate().toISOString(),
+      };
+
+      // Add question columns (using question title as key)
+      questionKeys.forEach((qKey) => {
+        const questionTitle = questionMap[qKey]?.title || qKey; // Fallback to qKey if title missing
+        const answer = original.responses[qKey];
+        responseData[questionTitle] = Array.isArray(answer)
+          ? answer.join(", ")
+          : answer instanceof Timestamp
+          ? answer.toDate().toLocaleDateString("en-GB")
+          : answer ?? "";
+      });
+
+      // Add Score column if form is a quiz
+      if (formData?.isQuiz) {
+        responseData["Score"] =
+          typeof original.totalScore === "number"
+            ? `${(original.totalScore * 100).toFixed(2)}%`
+            : "";
+      }
+
+      return responseData;
+    });
+
+    const csv = generateCsv(csvConfig)(rowData);
+    download(csvConfig)(csv);
+  };
+
+  const handleExportData = () => {
+    const questionKeys = Object.keys(questionMap).sort(
+      (a, b) => parseInt(a.substring(1)) - parseInt(b.substring(1))
+    );
+
+    const transformedData = tableData.map((item) => {
+      const responseData: Record<string, any> = {
+        Timestamp: item.createdAt.toDate().toISOString(),
+      };
+
+      // Add question columns (using question title as key)
+      questionKeys.forEach((qKey) => {
+        const questionTitle = questionMap[qKey]?.title || qKey; // Fallback to qKey if title missing
+        const answer = item.responses[qKey];
+        responseData[questionTitle] = Array.isArray(answer)
+          ? answer.join(", ")
+          : answer instanceof Timestamp
+          ? answer.toDate().toLocaleDateString("en-GB")
+          : answer ?? "";
+      });
+
+      // Add Score column if form is a quiz
+      if (formData?.isQuiz) {
+        responseData["Score"] =
+          typeof item.totalScore === "number"
+            ? `${(item.totalScore * 100).toFixed(2)}%`
+            : "";
+      }
+
+      return responseData;
+    });
+
+    const csv = generateCsv(csvConfig)(transformedData);
+    download(csvConfig)(csv);
+  };
+
+  if (formLoading || responsesLoading)
     return (
-      <Box pos="relative" h="100vh">
+      <Box pos="relative" h="100vh" style={{ marginTop: -120 }}>
         <LoadingOverlay visible />
       </Box>
     );
-  if (error || formError)
+  if (formError || responsesError)
     return (
       <Text c="red">
-        Error: {error?.message || formError?.message || "Unknown error"}
+        Error:{" "}
+        {formError?.message || responsesError?.message || "Unknown error"}
       </Text>
     );
 
@@ -674,7 +719,7 @@ export default function FormResponses() {
     );
 
   return (
-    <Container size="lg" py="xl">
+    <Container size="lg" py="xl" style={{ marginTop: -120 }}>
       <Group justify="space-between" mb="xl">
         <Title order={2}>Form Responses Analysis</Title>
       </Group>
@@ -691,7 +736,9 @@ export default function FormResponses() {
       )}
       <Paper withBorder p="md" mb="xl" style={{ display: "flex", gap: 10 }}>
         <Text fw={500}>Total Responses:</Text>
-        <Badge size="lg" fw={700}>{responseCount}</Badge>
+        <Badge size="lg" fw={700}>
+          {responseCount}
+        </Badge>
       </Paper>
 
       {/* {showAllResponses && ( */}

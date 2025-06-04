@@ -23,6 +23,7 @@ import { FormData, FormResponses } from "../types/form";
 import { DateInput } from "@mantine/dates";
 import "dayjs/locale/vi";
 import dayjs from "dayjs";
+import { useQuery } from "@tanstack/react-query";
 
 const createValidationSchema = (formData: FormData | null) => {
   const schema: Record<string, yup.AnySchema> = {};
@@ -58,6 +59,7 @@ const shuffleArray = (array: string[]): string[] => {
   }
   return newArray;
 };
+
 const shuffleQuestions = (questions: any[]) => {
   const shuffled = [...questions];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -67,11 +69,20 @@ const shuffleQuestions = (questions: any[]) => {
   return shuffled;
 };
 
+const fetchFormData = async (id: string) => {
+  const docRef = doc(db, "forms", id);
+  const docSnap = await getDoc(docRef);
+
+  if (!docSnap.exists()) {
+    throw new Error("Form not found");
+  }
+
+  return docSnap.data() as FormData;
+};
+
 export default function FormSubmission() {
-  const navigate = useNavigate();
   const { id } = useParams();
   const [submitting, setSubmitting] = useState(false);
-  const [formData, setFormData] = useState<FormData | null>(null);
   const [otherSelected, setOtherSelected] = useState<Record<string, boolean>>(
     {}
   );
@@ -79,88 +90,86 @@ export default function FormSubmission() {
     Record<string, { options: string[]; indexMap: Record<number, number> }>
   >({});
   const [shuffledPages, setShuffledPages] = useState<FormData["pages"]>([]);
+  const navigate = useNavigate();
+
+  const {
+    data: formData,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["form", id],
+    queryFn: () => fetchFormData(id!),
+    enabled: !!id,
+    staleTime: 1000 * 60,
+  });
 
   const form = useForm<FormResponses>({
     initialValues: {},
-    validate: yupResolver(createValidationSchema(formData)),
+    validate: yupResolver(createValidationSchema(formData || null)),
   });
 
+  // Initialize form state when formData is loaded
   useEffect(() => {
-    const fetchForm = async () => {
-      if (!id) return;
+    if (!formData) return;
 
-      try {
-        const docRef = doc(db, "forms", id);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          const data = docSnap.data() as FormData;
-          setFormData(data);
-
-          // Initialize form values
-          const initialValues = data.pages
-            .flatMap((page) => page.elements)
-            .reduce((acc: FormResponses, question) => {
-              acc[question.id] = question.type === "checkbox" ? [] : "";
-              if (question.allowOtherAnswer) {
-                acc[question.id + "_other"] = "";
-              }
-              return acc;
-            }, {} as FormResponses);
-          form.setValues(initialValues);
-
-          // Initialize otherSelected
-          const otherSelectedInit = data.pages
-            .flatMap((page) => page.elements)
-            .reduce((acc, question) => {
-              if (question.allowOtherAnswer) {
-                acc[question.id] = false;
-              }
-              return acc;
-            }, {} as Record<string, boolean>);
-          setOtherSelected(otherSelectedInit);
-
-          const processedPages = data.pages.map((page) => ({
-            ...page,
-            elements: data.isQuiz
-              ? shuffleQuestions(page.elements)
-              : page.elements,
-          }));
-          setShuffledPages(processedPages);
-
-          // Shuffle options for quiz mode
-          if (data.isQuiz) {
-            const shuffled = data.pages
-              .flatMap((page) => page.elements)
-              .reduce((acc, question) => {
-                if (
-                  (question.type === "multiple_choice" ||
-                    question.type === "checkbox") &&
-                  question.options &&
-                  Array.isArray(question.options)
-                ) {
-                  const shuffledOptions = shuffleArray(question.options);
-                  const indexMap: Record<number, number> = {};
-                  question.options.forEach((opt, originalIndex) => {
-                    const shuffledIndex = shuffledOptions.indexOf(opt);
-                    if (shuffledIndex >= 0) {
-                      indexMap[shuffledIndex] = originalIndex;
-                    }
-                  });
-                  acc[question.id] = { options: shuffledOptions, indexMap };
-                }
-                return acc;
-              }, {} as Record<string, { options: string[]; indexMap: Record<number, number> }>);
-            setShuffledOptions(shuffled);
-          }
+    // Initialize form values
+    const initialValues = formData.pages
+      .flatMap((page) => page.elements)
+      .reduce((acc: FormResponses, question) => {
+        acc[question.id] = question.type === "checkbox" ? [] : "";
+        if (question.allowOtherAnswer) {
+          acc[question.id + "_other"] = "";
         }
-      } catch (error) {
-        console.error("Lỗi khi tải form từ Firestore:", error);
-      }
-    };
+        return acc;
+      }, {} as FormResponses);
+    form.setValues(initialValues);
 
-    fetchForm();
-  }, [id]);
+    // Initialize otherSelected
+    const otherSelectedInit = formData.pages
+      .flatMap((page) => page.elements)
+      .reduce((acc, question) => {
+        if (question.allowOtherAnswer) {
+          acc[question.id] = false;
+        }
+        return acc;
+      }, {} as Record<string, boolean>);
+    setOtherSelected(otherSelectedInit);
+
+    // Process pages and shuffle if needed
+    const processedPages = formData.pages.map((page) => ({
+      ...page,
+      elements: formData.isQuiz
+        ? shuffleQuestions(page.elements)
+        : page.elements,
+    }));
+    setShuffledPages(processedPages);
+
+    // Shuffle options for quiz mode
+    if (formData.isQuiz) {
+      const shuffled = formData.pages
+        .flatMap((page) => page.elements)
+        .reduce((acc, question) => {
+          if (
+            (question.type === "multiple_choice" ||
+              question.type === "checkbox") &&
+            question.options &&
+            Array.isArray(question.options)
+          ) {
+            const shuffledOptions = shuffleArray(question.options);
+            const indexMap: Record<number, number> = {};
+            question.options.forEach((opt, originalIndex) => {
+              const shuffledIndex = shuffledOptions.indexOf(opt);
+              if (shuffledIndex >= 0) {
+                indexMap[shuffledIndex] = originalIndex;
+              }
+            });
+            acc[question.id] = { options: shuffledOptions, indexMap };
+          }
+          return acc;
+        }, {} as Record<string, { options: string[]; indexMap: Record<number, number> }>);
+      setShuffledOptions(shuffled);
+    }
+  }, [formData, form]);
 
   const handleSubmit = async (values: FormResponses) => {
     if (!formData || !id) return;
@@ -286,7 +295,23 @@ export default function FormSubmission() {
     }
   };
 
-  if (!formData) return <Text>Form not found!</Text>;
+  if (isLoading) {
+    return (
+      <Box pos="relative" h="100vh">
+        <LoadingOverlay visible />
+      </Box>
+    );
+  }
+
+  if (error || !formData) {
+    return (
+      <Container size="sm" py="xl">
+        <Text c="red" size="lg" ta="center">
+          {error instanceof Error ? error.message : "Form not found!"}
+        </Text>
+      </Container>
+    );
+  }
 
   return (
     <Container size="sm" py="xl">

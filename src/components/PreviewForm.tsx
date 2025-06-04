@@ -10,8 +10,9 @@ import {
   Button,
   Group,
   Box,
+  LoadingOverlay,
 } from "@mantine/core";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { FormData } from "../types/form";
 import { useNavigate, useParams } from "react-router-dom";
 import { DateInput } from "@mantine/dates";
@@ -19,36 +20,35 @@ import "dayjs/locale/vi";
 import "@mantine/dates/styles.css";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../firebase/firebaseConfig";
+import { useQuery } from "@tanstack/react-query";
+
+const fetchFormData = async (id: string) => {
+  const docRef = doc(db, "forms", id);
+  const docSnap = await getDoc(docRef);
+
+  if (!docSnap.exists()) {
+    throw new Error("Form not found");
+  }
+
+  return docSnap.data() as FormData;
+};
 
 export default function PreviewForm() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const [form, setForm] = useState<FormData | null>(null);
   const [selectedRatings, setSelectedRatings] = useState<
     Record<string, number>
   >({});
 
-  useEffect(() => {
-    const fetchForm = async () => {
-      if (!id) return;
-
-      try {
-        const docRef = doc(db, "forms", id);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          const data = docSnap.data() as FormData;
-          setForm(data);
-        } else {
-          console.warn("Form không tồn tại.");
-        }
-      } catch (error) {
-        console.error("Lỗi khi tải form từ Firestore:", error);
-      }
-    };
-
-    fetchForm();
-  }, [id]);
+  const {
+    data: form,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["form", id],
+    queryFn: () => fetchFormData(id!),
+    enabled: !!id,
+  });
 
   const handleRatingClick = (questionId: string, value: number) => {
     setSelectedRatings((prev) => ({
@@ -57,10 +57,26 @@ export default function PreviewForm() {
     }));
   };
 
-  if (!form) return <Text>Biểu mẫu không tồn tại!</Text>;
+  if (isLoading) {
+    return (
+      <Box pos="relative" h="100vh">
+        <LoadingOverlay visible />
+      </Box>
+    );
+  }
+
+  if (error || !form) {
+    return (
+      <Container size="sm" py="xl">
+        <Text c="red" size="lg" ta="center">
+          {error instanceof Error ? error.message : "Form not found!"}
+        </Text>
+      </Container>
+    );
+  }
 
   return (
-    <Container size="sm" py="xl" style={{ marginTop: -120 }}>
+    <Container size="sm" py="xl" style={{ marginTop: 0 }}>
       <Button
         variant="outline"
         onClick={() => navigate(`/create-form/${id}`)}

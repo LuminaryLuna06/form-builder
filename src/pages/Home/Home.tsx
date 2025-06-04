@@ -6,38 +6,49 @@ import {
   Card,
   Group,
   Text,
+  LoadingOverlay,
 } from "@mantine/core";
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 import { FormData } from "../../types/form";
 import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { db } from "../../firebase/firebaseConfig";
 import { useAuth } from "../../context/authContext";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+
+const fetchForms = async (userId: string) => {
+  const snapshot = await getDocs(collection(db, "forms"));
+  return snapshot.docs
+    .map((doc) => ({
+      id: doc.id,
+      ...(doc.data() as Omit<FormData, "id">),
+    }))
+    .filter((form) => form.userUID === userId) as FormData[];
+};
 
 export default function Home() {
-  const [forms, setForms] = useState<FormData[]>([]);
+  const { currentUser } = useAuth();
   const navigate = useNavigate();
-  const { currentUser } = useAuth(); // Assuming you have a useAuth hook to get current user
-  useEffect(() => {
-    const fetchForms = async () => {
-      if (!currentUser?.uid) return; // Ensure uid is defined
-      try {
-        const snapshot = await getDocs(collection(db, "forms"));
-        const formList = snapshot.docs
-          .map((doc) => ({
-            id: doc.id,
-            ...(doc.data() as Omit<FormData, "id">),
-          }))
-          .filter((form) => form.userUID === currentUser.uid) as FormData[];
-        setForms(formList);
-      } catch (err) {
-        console.error("Lỗi khi tải forms:", err);
-      }
-    };
+  const queryClient = useQueryClient();
 
-    fetchForms();
-  }, [currentUser?.uid]);
+  const {
+    data: forms = [],
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["forms", currentUser?.uid],
+    queryFn: () => fetchForms(currentUser!.uid),
+    enabled: !!currentUser?.uid,
+  });
+
+  const deleteFormMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await deleteDoc(doc(db, "forms", id));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["forms", currentUser?.uid] });
+    },
+  });
 
   const createForm = () => {
     const newId = uuidv4();
@@ -48,14 +59,28 @@ export default function Home() {
     const newId = uuidv4();
     navigate(`/create-form/${newId}?isQuiz=true`);
   };
+
   const deleteForm = async (id: string) => {
     try {
-      await deleteDoc(doc(db, "forms", id));
-      setForms((prev) => prev.filter((form) => form.id !== id));
+      await deleteFormMutation.mutateAsync(id);
     } catch (err) {
       console.error("Lỗi khi xóa form:", err);
     }
   };
+
+  if (isLoading) {
+    return <LoadingOverlay visible={true} />;
+  }
+
+  if (error) {
+    return (
+      <Container size="sm" py="xl">
+        <Text c="red" size="lg" ta="center">
+          {error instanceof Error ? error.message : "Failed to load forms"}
+        </Text>
+      </Container>
+    );
+  }
 
   return (
     <Container size="sm" py="xl">
