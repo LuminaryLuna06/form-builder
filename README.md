@@ -1,6 +1,6 @@
 # Form Builder - MSFake 🏗️
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)  
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![React](https://img.shields.io/badge/React-18.2.0-%2361DAFB)](https://react.dev/)  
 [![Firebase](https://img.shields.io/badge/Firebase-9.22.0-%23FFCA28)](https://firebase.google.com/)
 
@@ -26,8 +26,8 @@
 - **Frontend**:
   - React 18 + TypeScript
   - UI Library: [Mantine UI](https://mantine.dev/)
-  - State Management: TanStack Query
-  - Form Validation: Yup
+  - State Management: [TanStack Query](https://tanstack.com/query/latest)
+  - Form Validation: [Yup](https://www.npmjs.com/package/yup)
   - Drag & Drop: [Hello-pangea-dnd](https://github.com/hello-pangea/dnd)
 - **Backend**:
   - Firebase: Authentication, Firestore, Realtime Database
