@@ -1,54 +1,42 @@
-# React + TypeScript + Vite
+# Form Builder - MSFake 🏗️
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)  
+[![React](https://img.shields.io/badge/React-18.2.0-%2361DAFB)](https://react.dev/)  
+[![Firebase](https://img.shields.io/badge/Firebase-9.22.0-%23FFCA28)](https://firebase.google.com/)
 
-Currently, two official plugins are available:
+**Công cụ xây dựng form trực quan** với chức năng kéo thả, phân tích dữ liệu response và xuất báo cáo.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+👉 [Live Demo](https://luminaryluna06.github.io/form-builder/)
 
-## Expanding the ESLint configuration
+![Form Builder Preview](link_ảnh_preview.gif)
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## ✨ Tính năng nổi bật
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+- **Drag & Drop Form Designer**: Tạo form trực quan bằng kéo thả component.
+- **Quản lý form**: Thêm/sửa/xóa form, tuỳ chỉnh validation với Yup.
+- **Thu thập responses**: Lưu trữ response trên Firestore.
+- **Phân tích dữ liệu**:
+  - Chấm điểm tự động (với form trắc nghiệm).
+  - Thống kê response bằng biểu đồ (Mantine Charts).
+- **Export data**: Tải responses dưới dạng CSV.
+- **Real-time updates**: Cập nhật response ngay lập tức với TanStack Query.
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 🛠 Công nghệ
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- **Frontend**:
+  - React 18 + TypeScript
+  - UI Library: [Mantine UI](https://mantine.dev/)
+  - State Management: TanStack Query
+  - Form Validation: Yup
+  - Drag & Drop: [Hello-pangea-dnd](https://github.com/hello-pangea/dnd)
+- **Backend**:
+  - Firebase: Authentication, Firestore, Realtime Database
+  - Hosting: Github Page
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```
+## 🚀 Cách cài đặt
+
+1. **Clone repo**:
+   ```bash
+   git clone https://github.com/LuminaryLuna06/form-builder.git
+   cd form-builder
+   ```
