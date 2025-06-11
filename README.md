@@ -1,8 +1,8 @@
 # Form Builder - MSFake 🏗️
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![React](https://img.shields.io/badge/React-18.2.0-%2361DAFB)](https://react.dev/)  
-[![Firebase](https://img.shields.io/badge/Firebase-9.22.0-%23FFCA28)](https://firebase.google.com/)
+[![React](https://img.shields.io/badge/React-Latest-%2361DAFB?logo=react)](https://react.dev/)
+[![Firebase](https://img.shields.io/badge/Firebase-Latest-%23FFCA28?logo=firebase)](https://firebase.google.com/)
 
 **Công cụ xây dựng form trực quan** với chức năng kéo thả, phân tích dữ liệu response và xuất báo cáo.
 
