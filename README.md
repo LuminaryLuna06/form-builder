@@ -1,34 +1,32 @@
 # Form Builder - MSFake 📋
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![React](https://img.shields.io/badge/React-Latest-%2361DAFB?logo=react)](https://react.dev/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)  
+[![React](https://img.shields.io/badge/React-Latest-%2361DAFB?logo=react)](https://react.dev/)  
 [![Firebase](https://img.shields.io/badge/Firebase-Latest-%23FFCA28?logo=firebase)](https://firebase.google.com/)
 
-**Công cụ xây dựng form trực quan** với chức năng kéo thả, phân tích dữ liệu response và xuất báo cáo.
+**A visual form builder** with drag-and-drop functionality, response data analysis, and report generation.
 
 👉 [Live Demo](https://luminaryluna06.github.io/form-builder/)
 
-👉 **Ảnh minh họa**
+👉 **Screenshots**
 
-![Trang chủ](https://github.com/user-attachments/assets/9fb37eff-5349-4b05-bc88-2c495d44bc5d)
-![Trình tạo form](https://github.com/user-attachments/assets/45275dc7-7bd1-42b1-905f-ba970a463d62)
-![Bảng dữ liệu](https://github.com/user-attachments/assets/febab55b-cef5-4789-97fd-54158edc24ca)
-![Phân tích dữ liệu](https://github.com/user-attachments/assets/92f778e7-f75c-4226-9cba-47e07adb2eeb)
+![Homepage](https://github.com/user-attachments/assets/9fb37eff-5349-4b05-bc88-2c495d44bc5d)  
+![Form Editor](https://github.com/user-attachments/assets/45275dc7-7bd1-42b1-905f-ba970a463d62)  
+![Data Table](https://github.com/user-attachments/assets/febab55b-cef5-4789-97fd-54158edc24ca)  
+![Data Analysis](https://github.com/user-attachments/assets/92f778e7-f75c-4226-9cba-47e07adb2eeb)
 
-![Form Builder Preview](link_ảnh_preview.gif)
+## ✨ Key Features
 
-## ✨ Tính năng nổi bật
+- **Drag & Drop Form Designer**: Visually create forms by dragging and dropping components.
+- **Form Management**: Add/edit/delete forms with Yup validation.
+- **Response Collection**: Store responses in Firestore.
+- **Data Analysis**:
+  - Automatic scoring (for quiz forms).
+  - Response statistics with charts (Mantine Charts).
+- **Data Export**: Download responses as CSV.
+- **Real-time Updates**: Instant response updates with TanStack Query.
 
-- **Drag & Drop Form Designer**: Tạo form trực quan bằng kéo thả component.
-- **Quản lý form**: Thêm/sửa/xóa form, tuỳ chỉnh validation với Yup.
-- **Thu thập responses**: Lưu trữ response trên Firestore.
-- **Phân tích dữ liệu**:
-  - Chấm điểm tự động (với form trắc nghiệm).
-  - Thống kê response bằng biểu đồ (Mantine Charts).
-- **Export data**: Tải responses dưới dạng CSV.
-- **Real-time updates**: Cập nhật response ngay lập tức với TanStack Query.
-
-## 🛠 Công nghệ
+## 🛠 Technologies
 
 - **Frontend**:
   - React 18 + TypeScript
@@ -38,58 +36,58 @@
   - Drag & Drop: [Hello-pangea-dnd](https://github.com/hello-pangea/dnd)
 - **Backend**:
   - Firebase: Authentication, Firestore, Realtime Database
-  - Hosting: Github Page
+  - Hosting: GitHub Pages
 
-## 🚀 Cách cài đặt
+## 🚀 Installation
 
-1. **Clone repo**:
+1. **Clone the repository**:
 
    ```bash
    git clone https://github.com/LuminaryLuna06/form-builder.git
    cd form-builder
    ```
 
-2. **Cài đặt dependencies**:
+2. **Install dependencies**:
 
    ```bash
    npm install
    ```
 
-3. **Cấu hình Firebase**:
+3. **Configure Firebase**:
 
-   - Tạo project mới trên [Firebase Console](https://console.firebase.google.com/)
-   - Bật các dịch vụ cần thiết: Authentication, Firestore Database
-   - Sao chép thông tin cấu hình từ phần "Project settings"
+   - Create a new project in [Firebase Console](https://console.firebase.google.com/)
+   - Enable required services: Authentication, Firestore Database
+   - Copy configuration from "Project settings"
 
    ```env
-     VITE_FIREBASE_API_KEY=your_api_key
-     VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-     VITE_FIREBASE_PROJECT_ID=your_project_id
-     # ... (các biến khác)
+   VITE_FIREBASE_API_KEY=your_api_key
+   VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+   VITE_FIREBASE_PROJECT_ID=your_project_id
+   # ... (other variables)
    ```
 
-4. **Chạy ứng dụng**:
+4. **Run the application**:
 
    ```bash
    npm run dev
    ```
 
-5. **Deploy (tuỳ chọn)**:
+5. **Deploy (optional)**:
    ```bash
    npm run build
    ```
 
-## 🔥 Cấu hình Firebase
+## 🔥 Firebase Configuration
 
 1. **Authentication**:
 
-   - Vào phần Authentication → Bật phương thức đăng nhập (Email/Password, Google...)
+   - Go to Authentication → Enable sign-in methods (Email/Password, Google, etc.)
 
 2. **Database**:
-   - Vào Firestore Database → Tạo collections: `forms` và `responses`
-   - Cấu hình Security Rules phù hợp
+   - Go to Firestore Database → Create collections: `forms` and `responses`
+   - Configure appropriate Security Rules
 
-## 📌 Lưu ý
+## 📌 Notes
 
-- Không commit file `.env` lên repository
-- Kiểm tra kỹ các Security Rules trước khi deploy
+- Do not commit the `.env` file to the repository
+- Verify Security Rules before deploying
