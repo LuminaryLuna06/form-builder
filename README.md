@@ -15,7 +15,6 @@
 ![Bảng dữ liệu](https://github.com/user-attachments/assets/febab55b-cef5-4789-97fd-54158edc24ca)
 ![Phân tích dữ liệu](https://github.com/user-attachments/assets/92f778e7-f75c-4226-9cba-47e07adb2eeb)
 
-
 ![Form Builder Preview](link_ảnh_preview.gif)
 
 ## ✨ Tính năng nổi bật
@@ -44,7 +43,53 @@
 ## 🚀 Cách cài đặt
 
 1. **Clone repo**:
+
    ```bash
-   git clone https://github.com/LuminaryLuna06/form-builder.git
+   git clone https://github.com/your-username/form-builder.git
    cd form-builder
    ```
+
+2. **Cài đặt dependencies**:
+
+   ```bash
+   npm install
+   ```
+
+3. **Cấu hình Firebase**:
+
+   - Tạo project mới trên [Firebase Console](https://console.firebase.google.com/)
+   - Bật các dịch vụ cần thiết: Authentication, Firestore Database
+   - Sao chép thông tin cấu hình từ phần "Project settings"
+
+   ```env
+     VITE_FIREBASE_API_KEY=your_api_key
+     VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+     VITE_FIREBASE_PROJECT_ID=your_project_id
+     # ... (các biến khác)
+   ```
+
+4. **Chạy ứng dụng**:
+
+   ```bash
+   npm run dev
+   ```
+
+5. **Deploy (tuỳ chọn)**:
+   ```bash
+   npm run build
+   ```
+
+## 🔥 Cấu hình Firebase
+
+1. **Authentication**:
+
+   - Vào phần Authentication → Bật phương thức đăng nhập (Email/Password, Google...)
+
+2. **Database**:
+   - Vào Firestore Database → Tạo collections: `forms` và `responses`
+   - Cấu hình Security Rules phù hợp
+
+## 📌 Lưu ý
+
+- Không commit file `.env` lên repository
+- Kiểm tra kỹ các Security Rules trước khi deploy
