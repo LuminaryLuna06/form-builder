@@ -8,6 +8,14 @@
 
 👉 [Live Demo](https://luminaryluna06.github.io/form-builder/)
 
+👉 **Ảnh minh họa**
+
+![Trang chủ](https://github.com/user-attachments/assets/9fb37eff-5349-4b05-bc88-2c495d44bc5d)
+![Trình tạo form](https://github.com/user-attachments/assets/45275dc7-7bd1-42b1-905f-ba970a463d62)
+![Bảng dữ liệu](https://github.com/user-attachments/assets/febab55b-cef5-4789-97fd-54158edc24ca)
+![Phân tích dữ liệu](https://github.com/user-attachments/assets/92f778e7-f75c-4226-9cba-47e07adb2eeb)
+
+
 ![Form Builder Preview](link_ảnh_preview.gif)
 
 ## ✨ Tính năng nổi bật
